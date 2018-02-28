@@ -93,7 +93,7 @@ class product_product(models.Model):
         except IOError as e:
             print "I/O error({0}): {1}".format(e.errno, e.strerror)
             return {}
-        except:
+        except Exception as ex:
             print "Rare error"
             return {}
 
@@ -295,7 +295,7 @@ class product_product(models.Model):
         if ACCESS_TOKEN=='' or ACCESS_TOKEN==False:
             ML_state = True
         else:
-            response = meli.get("/users/me/", {'access_token':meli.access_token} )
+            response = meli.get("/users/me", {'access_token':meli.access_token} )
             rjson = response.json()
             if 'error' in rjson:
                 if rjson['message']=='invalid_token' or rjson['message']=='expired_token':
@@ -783,7 +783,10 @@ class product_product(models.Model):
     meli_buying_mode = fields.Selection( [("buy_it_now","Compre ahora"),("classified","Clasificado")], string='Método de compra')
     meli_price = fields.Char(string='Precio de venta', size=128)
     meli_price_fixed = fields.Boolean(string='Price is fixed')
-    meli_currency = fields.Selection([("ARS","Peso Argentino (ARS)")],string='Moneda (ARS)')
+    meli_currency = fields.Selection([
+        ("CLP","Peso Chileno (CLP)"),
+        ("USD","Dolares Americanos (USD)")
+        ],string='Moneda')
     meli_condition = fields.Selection([ ("new", "Nuevo"), ("used", "Usado"), ("not_specified","No especificado")],'Condición del producto')
     meli_available_quantity = fields.Integer(string='Cantidad disponible')
     meli_warranty = fields.Char(string='Garantía', size=256)
