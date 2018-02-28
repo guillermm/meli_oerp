@@ -163,7 +163,7 @@ class product_product(models.Model):
                         fullname = fullname + "/" + path["name"]
                         www_cats = self.env['product.public.category']
                         if www_cats!=False:
-                            www_cat_id = www_cats.search([('name','=',path["name"])]).id
+                            www_cat_id = www_cats.search([('name','=',path["name"])], limit=1).id
                             if www_cat_id==False:
                                 www_cat_fields = {
                                   'name': path["name"],
