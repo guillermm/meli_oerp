@@ -136,7 +136,10 @@ class mercadolibre_orders(models.Model):
         pricelist_obj = self.env['product.pricelist']
         respartner_obj = self.env['res.partner']
 
-        plistids = pricelist_obj.search([('currency_id','=','CLP')] )
+        plistids = pricelist_obj.search([
+            ('currency_id','=','CLP'),
+            ('website_id','!=',False),
+            ], limit=1)
         plistid = None
         if plistids:
             plistid = plistids
