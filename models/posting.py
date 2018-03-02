@@ -31,7 +31,7 @@ class MercadolibrePostingUpdate(models.TransientModel):
     _name = "mercadolibre.posting.update"
     _description = "Update Posting Questions"
 
-    def posting_update(self, context ):
+    def action_posting_update(self, context ):
         posting_ids = False
         _logger.info("context:")
         _logger.info(context)
@@ -60,9 +60,10 @@ class MercadolibrePosting(models.Model):
     meli_permalink = fields.Char( string="Permalink en MercadoLibre", size=512 )
     meli_price = fields.Char(string='Precio de venta', size=128)
     posting_questions = fields.One2many( 'mercadolibre.questions','posting_id','Questions' )
-    posting_update = fields.Char(compute='posting_update', string="Posting Update", store=False )
+    posting_update = fields.Char(compute='compute_posting_update', string="Posting Update", store=False )
 
-    def posting_update(self):
+    @api.depends()
+    def compute_posting_update(self):
         update_status = "ok"
         self.posting_query_questions()
         res = {}
