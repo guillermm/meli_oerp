@@ -1,19 +1,21 @@
+# -*- coding: utf-8 -*-
+
 from odoo import fields, osv, models
 from odoo.tools.translate import _
-import pdb
 #CHANGE WARNING_MODULE with your module name
 WARNING_MODULE = 'meli_oerp'
 WARNING_TYPES = [('warning','Warning'),('info','Information'),('error','Error')]
 
 class warning(models.TransientModel):
+    
     _name = 'warning'
     _description = 'warning'
+    _req_name = 'title'
+    
     type = fields.Selection(WARNING_TYPES, string='Type', readonly=True);
     title = fields.Char(string="Title", size=100, readonly=True);
     message = fields.Text(string="Message", readonly=True);
     message_html = fields.Html(string="Message HTML", readonly=True);
-
-    _req_name = 'title'
 
     def _get_view_id(self ):
         """Get the view id
@@ -55,5 +57,3 @@ class warning(models.TransientModel):
         id = self.create( {'title': title, 'message': message, 'message_html': message_html, 'type': 'error'}).id
         res = self._message( id)
         return res
-
-warning()

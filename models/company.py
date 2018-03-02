@@ -19,23 +19,20 @@
 #
 ##############################################################################
 
+import logging
+
 from odoo import fields, osv, models, api
 from odoo.tools.translate import _
-import logging
-_logger = logging.getLogger(__name__)
-import urllib2
-import pdb
-
-from meli_oerp_config import *
-from warning import warning
 
 import requests
-import melisdk
-from melisdk.meli import Meli
+from .meli_oerp_config import *
+from ..melisdk.meli import Meli
 
 #REDIRECT_URI = 'http://127.0.0.1:8069/meli_login'
 
-class res_company(models.Model):
+_logger = logging.getLogger(__name__)
+
+class ResCompany(models.Model):
     _name = "res.company"
     _inherit = "res.company"
 
@@ -51,18 +48,13 @@ class res_company(models.Model):
         #user_obj = self.pool.get('res.users').browse(cr, uid, uid)
         #company = user_obj.company_id
         company = self.env.user.company_id
-        warningobj = self.pool.get('warning')
-
         CLIENT_ID = company.mercadolibre_client_id
         CLIENT_SECRET = company.mercadolibre_secret_key
         ACCESS_TOKEN = company.mercadolibre_access_token
         REFRESH_TOKEN = company.mercadolibre_refresh_token
-
         meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
         ML_state = False
-
         #pdb.set_trace()
-
         try:
             _logger.info("access_token:"+str(ACCESS_TOKEN))
             response = meli.get("/items/MLA1", {'access_token':meli.access_token} )
@@ -75,7 +67,6 @@ class res_company(models.Model):
                     ML_state = True
                 if rjson["error"]=="not_found":
                     ML_state = False
-
             if ACCESS_TOKEN=='' or ACCESS_TOKEN==False:
                 ML_state = True
         except requests.exceptions.ConnectionError as e:
@@ -83,16 +74,12 @@ class res_company(models.Model):
             ML_state = True
             error_msg = 'MELI WARNING: NO INTERNET CONNECTION TO API.MERCADOLIBRE.COM: complete the Cliend Id, and Secret Key and try again '
             _logger.error(error_msg)
-
 #        except requests.exceptions.HTTPError as e:
 #            print "And you get an HTTPError:", e.message
-
         if ML_state:
             ACCESS_TOKEN = ''
             REFRESH_TOKEN = ''
-
             company.write({'mercadolibre_access_token': ACCESS_TOKEN, 'mercadolibre_refresh_token': REFRESH_TOKEN, 'mercadolibre_code': '' } )
-
         #res = {}
         #for company in self.browse(cr,uid,ids):
         #for company in self:
@@ -121,12 +108,10 @@ class res_company(models.Model):
         company = self.env.user.company_id
         #user_obj = self.pool.get('res.users').browse(cr, uid, uid)
         #company = user_obj.company_id
-
         CLIENT_ID = company.mercadolibre_client_id
         CLIENT_SECRET = company.mercadolibre_secret_key
         ACCESS_TOKEN = ''
         REFRESH_TOKEN = ''
-
         company.write({'mercadolibre_access_token': ACCESS_TOKEN, 'mercadolibre_refresh_token': REFRESH_TOKEN, 'mercadolibre_code': '' } )
         url_logout_meli = '/web?debug=#view_type=kanban&model=product.template&action=150'
         print url_logout_meli
@@ -147,12 +132,9 @@ class res_company(models.Model):
         CLIENT_ID = company.mercadolibre_client_id
         CLIENT_SECRET = company.mercadolibre_secret_key
         meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET)
-
         url_login_meli = meli.auth_url(redirect_URI=REDIRECT_URI)
         #url_login_oerp = "/meli_login"
-
         print "OK company.meli_login() called: url is ", url_login_meli
-
         return {
             "type": "ir.actions.act_url",
             "url": url_login_meli,
@@ -161,14 +143,11 @@ class res_company(models.Model):
 
     @api.multi
     def meli_query_orders(self):
-
         _logger.info('company.meli_query_orders() ')
         #user_obj = self.pool.get('res.users').browse(cr, uid, uid)
         #company = user_obj.company_id
         company = self.env.user.company_id
-
         orders_obj = self.env['mercadolibre.orders']
-
         result = orders_obj.orders_query_recent()
 #"type": "ir.actions.act_window",
 #"id": "action_meli_orders_tree",
@@ -180,14 +159,11 @@ class res_company(models.Model):
         #user_obj = self.pool.get('res.users').browse(cr, uid, uid)
         #company = user_obj.company_id
         company = self.env.user.company_id
-
         #products_obj = self.pool.get('product.product')
-
         #result = products_obj.product_meli_get_products(products_obj)
         #"type": "ir.actions.act_window",
         #"id": "action_meli_orders_tree",
         self.product_meli_get_products()
-
         return {}
 
     def product_meli_get_products( self ):
@@ -197,23 +173,18 @@ class res_company(models.Model):
         company = self.env.user.company_id
         product_obj = self.pool.get('product.product')
         #product = product_obj.browse(cr, uid, ids[0])
-
         CLIENT_ID = company.mercadolibre_client_id
         CLIENT_SECRET = company.mercadolibre_secret_key
         ACCESS_TOKEN = company.mercadolibre_access_token
         REFRESH_TOKEN = company.mercadolibre_refresh_token
-
         meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
-
         url_login_meli = meli.auth_url(redirect_URI=REDIRECT_URI)
         #url_login_oerp = "/meli_login"
-
         results = []
         response = meli.get("/users/"+company.mercadolibre_seller_id+"/items/search", {'access_token':meli.access_token,'offset': 0 })
         #response = meli.get("/sites/MLA/search?seller_id="+company.mercadolibre_seller_id+"&limit=0", {'access_token':meli.access_token})
         rjson = response.json()
-        _logger.info( rjson )
-
+        _logger.info(rjson)
         if 'error' in rjson:
             if rjson['message']=='invalid_token' or rjson['message']=='expired_token':
                 ACCESS_TOKEN = ''
@@ -223,11 +194,8 @@ class res_company(models.Model):
             "type": "ir.actions.act_url",
             "url": url_login_meli,
             "target": "new",}
-
-
         if 'results' in rjson:
             results = rjson['results']
-
         #download?
         if (rjson['paging']['total']>rjson['paging']['limit']):
             pages = rjson['paging']['total']/rjson['paging']['limit']
@@ -250,8 +218,6 @@ class res_company(models.Model):
                     results += rjson2['results']
                     ioff+= rjson['paging']['limit']
                     condition_last_off = ( ioff>=rjson['paging']['total'])
-
-
         _logger.info( rjson )
         _logger.info( "("+str(rjson['paging']['total'])+") products to check...")
         iitem = 0
@@ -285,7 +251,6 @@ class res_company(models.Model):
                             _logger.info( "product couldnt be created")
                     else:
                         _logger.info( "product error: " + str(rjson3) )
-
         return {}
 
     @api.multi
@@ -294,14 +259,11 @@ class res_company(models.Model):
         #user_obj = self.pool.get('res.users').browse(cr, uid, uid)
         #company = user_obj.company_id
         company = self.env.user.company_id
-
         #products_obj = self.pool.get('product.product')
-
         #result = products_obj.product_meli_get_products(products_obj)
         #"type": "ir.actions.act_window",
         #"id": "action_meli_orders_tree",
         self.product_meli_update_products()
-
         return {}
 
     def product_meli_update_products( self ):
@@ -311,17 +273,13 @@ class res_company(models.Model):
         company = self.env.user.company_id
         product_obj = self.env['product.product']
         #product = product_obj.browse(cr, uid, ids[0])
-
         CLIENT_ID = company.mercadolibre_client_id
         CLIENT_SECRET = company.mercadolibre_secret_key
         ACCESS_TOKEN = company.mercadolibre_access_token
         REFRESH_TOKEN = company.mercadolibre_refresh_token
-
         meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
-
         url_login_meli = meli.auth_url(redirect_URI=REDIRECT_URI)
         #url_login_oerp = "/meli_login"
-
         product_ids = self.env['product.product'].search([('meli_pub','=',True)])
         if product_ids:
             for obj in product_ids:
@@ -331,18 +289,11 @@ class res_company(models.Model):
                 #import pdb; pdb.set_trace()
                 #print "Product " + obj.name
                 obj.product_meli_get_product()
-
         return {}
 
     def meli_import_categories(self, context=None ):
         company = self.env.user.company_id
-
         category_obj = self.env['mercadolibre.category']
-
         CATEGORY_ROOT = company.mercadolibre_category_import
-
         result = category_obj.import_all_categories(category_root=CATEGORY_ROOT )
-
         return {}
-
-res_company()

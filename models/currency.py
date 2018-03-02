@@ -3,7 +3,7 @@ from odoo import models, fields, api
 from odoo.tools.translate import _
 import math
 
-class res_currency_rate(models.Model):
+class ResCurrencyRate(models.Model):
     _inherit = 'res.currency.rate'
 
     @api.one
@@ -28,6 +28,3 @@ class res_currency_rate(models.Model):
                         }
                         product.write(vals)
                         product.product_post()
-
-
-res_currency_rate()

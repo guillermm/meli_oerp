@@ -1,13 +1,9 @@
 from odoo import http, api
 
-import melisdk
-from melisdk.meli import Meli
+from ..melisdk.meli import Meli
 
 from odoo import fields, osv
 from odoo.http import request
-
-
-from meli_oerp_config import *
 
 class MercadoLibre(http.Controller):
     @http.route('/meli/', auth='public')

@@ -19,19 +19,15 @@
 #
 ##############################################################################
 
-from odoo import fields, osv, models, api
 import logging
+
+from odoo import fields, osv, models, api
+
+from ..melisdk.meli import Meli
+
 _logger = logging.getLogger(__name__)
-import urllib2
 
-from meli_oerp_config import *
-from warning import warning
-
-import requests
-import melisdk
-from melisdk.meli import Meli
-
-class mercadolibre_category(models.Model):
+class MercadolibreCategory(models.Model):
     _name = "mercadolibre.category"
     _description = "Categories of MercadoLibre"
 
@@ -39,78 +35,62 @@ class mercadolibre_category(models.Model):
     meli_category_id = fields.Char('Category Id');
     public_category_id = fields.Integer('Public Category Id');
 
-
     def import_category(self, category_id ):
         company = self.env.user.company_id
-
-        warningobj = self.env['warning']
-        category_obj = self.env['mercadolibre.category']
-
+        category_model = self.env['mercadolibre.category']
         CLIENT_ID = company.mercadolibre_client_id
         CLIENT_SECRET = company.mercadolibre_secret_key
         ACCESS_TOKEN = company.mercadolibre_access_token
         REFRESH_TOKEN = company.mercadolibre_refresh_token
-
         meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
-
         if (category_id):
-            ml_cat_id = category_obj.search([('meli_category_id','=',category_id)])
+            ml_cat_id = category_model.search([('meli_category_id','=',category_id)])
             if (ml_cat_id):
-              print "category exists!" + str(ml_cat_id)
+                print "category exists!" + str(ml_cat_id)
             else:
-              print "Creating category: " + str(category_id)
-              #https://api.mercadolibre.com/categories/MLA1743
-              response_cat = meli.get("/categories/"+str(category_id), {'access_token':meli.access_token})
-              rjson_cat = response_cat.json()
-              print "category:" + str(rjson_cat)
-              fullname = ""
-              if ("path_from_root" in rjson_cat):
-                  path_from_root = rjson_cat["path_from_root"]
-                  for path in path_from_root:
-                    fullname = fullname + "/" + path["name"]
+                print "Creating category: " + str(category_id)
+                #https://api.mercadolibre.com/categories/MLA1743
+                response_cat = meli.get("/categories/"+str(category_id), {'access_token':meli.access_token})
+                rjson_cat = response_cat.json()
+                print "category:" + str(rjson_cat)
+                fullname = ""
+                if ("path_from_root" in rjson_cat):
+                    path_from_root = rjson_cat["path_from_root"]
+                    for path in path_from_root:
+                        fullname = fullname + "/" + path["name"]
 
-              #fullname = fullname + "/" + rjson_cat['name']
-              #print "category fullname:" + str(fullname)
-              _logger.info(fullname)
-              cat_fields = {
-                'name': fullname,
-                'meli_category_id': ''+str(category_id),
-              }
-              ml_cat_id = category_obj.create((cat_fields))
+                #fullname = fullname + "/" + rjson_cat['name']
+                #print "category fullname:" + str(fullname)
+                _logger.info(fullname)
+                cat_fields = {
+                    'name': fullname,
+                    'meli_category_id': ''+str(category_id),
+                    }
+                ml_cat_id = category_model.create((cat_fields))
 
 
     def import_all_categories(self, category_root ):
         company = self.env.user.company_id
-
-        warningobj = self.env['warning']
-        category_obj = self.env['mercadolibre.category']
-
+        warning_model = self.env['warning']
+        category_model = self.env['mercadolibre.category']
         CLIENT_ID = company.mercadolibre_client_id
         CLIENT_SECRET = company.mercadolibre_secret_key
         ACCESS_TOKEN = company.mercadolibre_access_token
         REFRESH_TOKEN = company.mercadolibre_refresh_token
-
         meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
-
         RECURSIVE_IMPORT = company.mercadolibre_recursive_import
-
         if (category_root):
             response = meli.get("/categories/"+str(category_root), {'access_token':meli.access_token} )
-
             print "response.content:", response.content
-
             rjson = response.json()
             if ("name" in rjson):
                 # en el html deberia ir el link  para chequear on line esa categoría corresponde a sus productos.
-                warningobj.info( title='MELI WARNING', message="Preparando importación de todas las categorías en "+str(category_root), message_html=response )
+                warning_model.info( title='MELI WARNING', message="Preparando importación de todas las categorías en "+str(category_root), message_html=response )
                 if ("children_categories" in rjson):
                     #empezamos a iterar categorias
                     for child in rjson["children_categories"]:
                         ml_cat_id = child["id"]
                         if (ml_cat_id):
-                            category_obj.import_category(category_id=ml_cat_id)
+                            category_model.import_category(category_id=ml_cat_id)
                             if (RECURSIVE_IMPORT):
-                                category_obj.import_all_categories(category_root=ml_cat_id)
-
-
-mercadolibre_category()
+                                category_model.import_all_categories(category_root=ml_cat_id)

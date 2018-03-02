@@ -19,25 +19,21 @@
 #
 ##############################################################################
 
+import json
+import logging
+
 from odoo import fields, osv, models, _
 from odoo.tools.translate import _
-import pdb
-import logging
-_logger = logging.getLogger(__name__)
 
-import json
-from datetime import datetime
+_logger = logging.getLogger(__name__)
 
 #from bottle import Bottle, run, template, route, request
 #import json
-from meli_oerp_config import *
 
-from warning import warning
+from ..melisdk.meli import Meli
 
-import melisdk
-from melisdk.meli import Meli
-
-class product_post(models.TransientModel):
+class ProductPost(models.TransientModel):
+    
     _name = "mercadolibre.product.post"
     _description = "Wizard de Product Posting en MercadoLibre"
 
@@ -45,7 +41,6 @@ class product_post(models.TransientModel):
     posting_date = fields.Date('Fecha del posting');
 	    #'company_id': fields.many2one('res.company',string='Company'),
 	    #'mercadolibre_state': fields.related( 'res.company', 'mercadolibre_state', string="State" )
-
 
     def pretty_json( self, data ):
         return json.dumps( data, sort_keys=False, indent=4 )
@@ -55,23 +50,16 @@ class product_post(models.TransientModel):
         company = self.env.user.company_id
         product_ids = context['active_ids']
         product_obj = self.env['product.product']
-
         #user_obj = self.pool.get('res.users').browse(cr, uid, uid)
         #user_obj.company_id.meli_login()
         #company = user_obj.company_id
-        warningobj = self.env['warning']
-
         #company = self.pool.get('res.company').browse(cr,uid,1)
-
         REDIRECT_URI = company.mercadolibre_redirect_uri
         CLIENT_ID = company.mercadolibre_client_id
         CLIENT_SECRET = company.mercadolibre_secret_key
         ACCESS_TOKEN = company.mercadolibre_access_token
         REFRESH_TOKEN = company.mercadolibre_refresh_token
-
-
         meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
-
         if ACCESS_TOKEN=='' or ACCESS_TOKEN==False:
             meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET)
             url_login_meli = meli.auth_url(redirect_URI=REDIRECT_URI)
@@ -87,18 +75,12 @@ class product_post(models.TransientModel):
             #Alta
             if (product.meli_pub and not product.meli_id):
                 res = product.product_post()
-
             #Actualiza
             if (product.meli_pub and product.meli_id):
                 res = product.product_post()
-
             #Pausa
             if (not product.meli_pub and product.meli_id):
                 res = product.product_meli_status_pause()
-
             if 'name' in res:
                 return res
-
         return res
-
-product_post()
