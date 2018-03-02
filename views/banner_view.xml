@@ -5,7 +5,6 @@
 		<record model="ir.ui.view" id="view_meli_banner_tree">
 			<field name="name">mercadolibre.banner.tree</field>
 			<field name="model">mercadolibre.banner</field>
-			<field name="type">tree</field>
 			<field name="arch" type="xml">
 				<tree string="Banners">
 					<field name="name" />

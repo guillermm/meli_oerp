@@ -5,7 +5,6 @@
 		<record model="ir.ui.view" id="view_meli_posting_tree">
 			<field name="name">mercadolibre.posting.tree</field>
 			<field name="model">mercadolibre.posting</field>
-			<field name="type">tree</field>
 			<field name="arch" type="xml">
 				<tree string="Postings">
 					<field name="name" />
@@ -23,7 +22,6 @@
 		<record model="ir.ui.view" id="view_meli_posting_form">
 			<field name="name">mercadolibre.posting.form</field>
 			<field name="model">mercadolibre.posting</field>
-			<field name="type">form</field>
 			<field name="arch" type="xml">
 				<form string="ML Posting">
 					<group>

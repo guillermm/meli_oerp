@@ -5,7 +5,6 @@
 		<record model="ir.ui.view" id="view_meli_orders_tree">
 			<field name="name">mercadolibre.orders.tree</field>
 			<field name="model">mercadolibre.orders</field>
-			<field name="type">tree</field>
 			<field name="arch" type="xml">
 				<tree string="Orders">
 					<field name="order_id" />
@@ -60,7 +59,6 @@
 		<record model="ir.ui.view" id="view_meli_buyers_tree">
 			<field name="name">mercadolibre.buyers.tree</field>
 			<field name="model">mercadolibre.buyers</field>
-			<field name="type">tree</field>
 			<field name="arch" type="xml">
 				<tree string="Buyers">
 					<field name="buyer_id" />
@@ -73,7 +71,6 @@
 		<record model="ir.ui.view" id="view_meli_orders_form">
 			<field name="name">mercadolibre.orders.form</field>
 			<field name="model">mercadolibre.orders</field>
-			<field name="type">form</field>
 			<field name="arch" type="xml">
 				<form string="Order">
 					<field name="seller" />
@@ -94,7 +91,6 @@
 		<record model="ir.ui.view" id="view_meli_order_items_tree">
 			<field name="name">mercadolibre.order_items.tree</field>
 			<field name="model">mercadolibre.order_items</field>
-			<field name="type">tree</field>
 			<field name="arch" type="xml">
 				<tree string="Order Items">
 					<field name="posting_id" />
@@ -109,7 +105,6 @@
 		<record model="ir.ui.view" id="view_meli_payments_tree">
 			<field name="name">mercadolibre.payments.tree</field>
 			<field name="model">mercadolibre.payments</field>
-			<field name="type">tree</field>
 			<field name="arch" type="xml">
 				<tree string="Payments">
 					<field name="payment_id" />

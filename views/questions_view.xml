@@ -5,7 +5,6 @@
 		<record model="ir.ui.view" id="view_meli_questions_tree">
 			<field name="name">mercadolibre.questions.tree</field>
 			<field name="model">mercadolibre.questions</field>
-			<field name="type">tree</field>
 			<field name="arch" type="xml">
 				<tree string="Questions">
 					<field name="posting_id" />

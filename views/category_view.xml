@@ -5,7 +5,6 @@
 		<record model="ir.ui.view" id="view_meli_category_tree">
 			<field name="name">mercadolibre.category.tree</field>
 			<field name="model">mercadolibre.category</field>
-			<field name="type">tree</field>
 			<field name="arch" type="xml">
 				<tree string="Categories">
 					<field name="name" />
