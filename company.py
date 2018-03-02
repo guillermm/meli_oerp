@@ -322,7 +322,7 @@ class res_company(models.Model):
         url_login_meli = meli.auth_url(redirect_URI=REDIRECT_URI)
         #url_login_oerp = "/meli_login"
 
-        product_ids = self.env['product.product'].search([])
+        product_ids = self.env['product.product'].search([('meli_pub','=',True)])
         if product_ids:
             for obj in product_ids:
                 _logger.info( "Product to update: " + str(obj.id)  )

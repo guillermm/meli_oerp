@@ -21,6 +21,7 @@
 
 from odoo import models, fields, api, osv
 from odoo.tools.translate import _
+from odoo import tools
 
 import pdb
 import logging
@@ -92,12 +93,12 @@ class product_product(models.Model):
             response = meli.get("/items/"+product.meli_id, {'access_token':meli.access_token})
             #_logger.info(response)
             rjson = response.json()
-            _logger.info(response)
+            _logger.info(rjson)
         except IOError as e:
             print "I/O error({0}): {1}".format(e.errno, e.strerror)
             return {}
         except Exception as ex:
-            print "Rare error"
+            print "Rare error: %s" % tools.ustr(ex)
             return {}
 
 
@@ -106,6 +107,10 @@ class product_product(models.Model):
         desplain = ''
         vid = ''
         if 'error' in rjson:
+            return {}
+        
+        if 'status' in rjson and rjson['status'] == 'inactive':
+            _logger.info("Producto Inactivo: %s %s, no se puede actualizar", rjson.get('id') or '', rjson.get('title') or '')
             return {}
 
         if "content" in response:
