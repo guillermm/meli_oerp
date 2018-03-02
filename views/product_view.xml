@@ -1,87 +1,85 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<openerp>
-    <data>
+<odoo>
+	<data>
 
-        <record model="ir.ui.view" id="product_nh_ml_form_view">
-            <field name="name">product.nh.ml.form.inherit</field>
-            <field name="model">product.product</field>
-            <field name="inherit_id" ref="product.product_normal_form_view" />
-            <field name="arch" type="xml">
-              <label for="sale_ok" position="after">
-                    <field name="meli_pub" />
-                    <label for="meli_pub" />
-
-                </label>
-                
-                <data>
-                    <notebook>
-                        <page string="MercadoLibre">
+		<record model="ir.ui.view" id="product_nh_ml_form_view">
+			<field name="name">product.nh.ml.form.inherit</field>
+			<field name="model">product.product</field>
+			<field name="inherit_id" ref="product.product_normal_form_view" />
+			<field name="arch" type="xml">
+				<label for="sale_ok" position="after">
+					<field name="meli_pub" />
+					<label for="meli_pub" />
+				</label>
+				<data>
+					<notebook>
+						<page string="MercadoLibre">
 							<group>
-
-                                <button name='product_meli_get_product' type="object"
-										string="Cargar desde MLA" attrs="{'invisible':['|',('meli_state','=',True),('meli_id','=',False)]}"/>
-                                <br/>
+								<button name='product_meli_get_product' type="object"
+									string="Cargar desde MLA"
+									attrs="{'invisible':['|',('meli_state','=',True),('meli_id','=',False)]}" />
+								<br />
 								<button name='%(action_product_post)d' type="action"
-										string="Publicar producto en MLA" attrs="{'invisible':['|',('meli_state','=',True),('meli_id','!=',False)]}"/>
-                                <br/>
-                                <button name='%(action_product_post)d' type="action"
-										string="Actualizar producto en MLA" attrs="{'invisible':['|',('meli_state','=',True),('meli_id','=',False)]}"/>
-<!-- ,('meli_status','=','active'), -->
-                                <br/>
+									string="Publicar producto en MLA"
+									attrs="{'invisible':['|',('meli_state','=',True),('meli_id','!=',False)]}" />
+								<br />
+								<button name='%(action_product_post)d' type="action"
+									string="Actualizar producto en MLA"
+									attrs="{'invisible':['|',('meli_state','=',True),('meli_id','=',False)]}" />
+								<!-- ,('meli_status','=','active'), -->
+								<br />
 								<button name='product_meli_status_active' type="object"
-										string="Activar producto en MLA" attrs="{'invisible':['|',('meli_state','=',True),('meli_id','=',False)]}"/>
-                                <br/>
-                                <button name='product_meli_status_pause' type="object"
-										string="Pausar producto en MLA" attrs="{'invisible':['|',('meli_state','=',True),('meli_id','=',False)]}"/>
-                                <br/>
-                                <button name='product_meli_status_close' type="object"
-										string="Cerrar producto en MLA" attrs="{'invisible':['|',('meli_state','=',True),('meli_id','=',False)]}"/>
-                                <br/>
-                                <button name='product_meli_delete' type="object"
-										string="Eliminar producto de MLA" attrs="{'invisible':['|',('meli_state','=',True),('meli_id','=',False)]}"/>
-                                <br/>
-                                <button name='product_meli_upload_image' type="object"
-										string="Subir imagen a MLA" attrs="{'invisible':[('meli_state','=',True)]}"/>
-                                <br/>
-                                <button name='product_meli_login' type="object"
-										string="Se requiere Iniciar Sesión en MLA" attrs="{'invisible':[('meli_state','=',False)]}"/>
-                                <br/>
-                                <field name="meli_post_required" />
-                                <field name="meli_state" />
-                                <field name="meli_status" />
-                                <field name="meli_permalink" widget="url"/>
+									string="Activar producto en MLA"
+									attrs="{'invisible':['|',('meli_state','=',True),('meli_id','=',False)]}" />
+								<br />
+								<button name='product_meli_status_pause' type="object"
+									string="Pausar producto en MLA"
+									attrs="{'invisible':['|',('meli_state','=',True),('meli_id','=',False)]}" />
+								<br />
+								<button name='product_meli_status_close' type="object"
+									string="Cerrar producto en MLA"
+									attrs="{'invisible':['|',('meli_state','=',True),('meli_id','=',False)]}" />
+								<br />
+								<button name='product_meli_delete' type="object"
+									string="Eliminar producto de MLA"
+									attrs="{'invisible':['|',('meli_state','=',True),('meli_id','=',False)]}" />
+								<br />
+								<button name='product_meli_upload_image' type="object"
+									string="Subir imagen a MLA" attrs="{'invisible':[('meli_state','=',True)]}" />
+								<br />
+								<button name='product_meli_login' type="object"
+									string="Se requiere Iniciar Sesión en MLA" attrs="{'invisible':[('meli_state','=',False)]}" />
+								<br />
+								<field name="meli_post_required" />
+								<field name="meli_state" />
+								<field name="meli_status" />
+								<field name="meli_permalink" widget="url" />
 								<field name="meli_id" />
-                                <br/>
-                                <br/>
+								<br />
+								<br />
 								<field name="meli_title" />
-                                <field name="meli_description_banner_id" on_change="product_on_change_meli_banner( meli_description_banner_id)" />
+								<field name="meli_description_banner_id"
+									on_change="product_on_change_meli_banner( meli_description_banner_id)" />
 								<field name="meli_description" />
 								<field name="meli_category" />
 								<field name="meli_listing_type" />
 								<field name="meli_buying_mode" />
-
 								<field name="meli_price_fixed" />
 								<field name="meli_price" />
 								<field name="meli_currency" />
-
 								<field name="meli_condition" />
 								<field name="meli_available_quantity" />
 								<field name="meli_warranty" />
 								<field name="meli_imagen_logo" />
-                                <field name="meli_imagen_id" />
-                                <field name="meli_imagen_link" />
-                                <field name="meli_multi_imagen_id" />
+								<field name="meli_imagen_id" />
+								<field name="meli_imagen_link" />
+								<field name="meli_multi_imagen_id" />
 								<field name="meli_video" />
-
-
-
-
 							</group>
-                        </page>
-                    </notebook>
-                </data>
-            </field>
-        </record>
-
-    </data>
-</openerp>
+						</page>
+					</notebook>
+				</data>
+			</field>
+		</record>
+	</data>
+</odoo>

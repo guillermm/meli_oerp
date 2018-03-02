@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<openerp>
-    <data>
-
-
+<odoo>
+	<data>
 
 		<record model="ir.actions.act_url" id="meli_login_action">
 			<field name="name">meli_login_action</field>
@@ -10,58 +8,44 @@
 			<field name="target">new</field>
 		</record>
 
-        <record model="ir.ui.view" id="view_company_page_mercadolibreb">
-            <field name="name">res.company.form.meli</field>
-            <field name="model">res.company</field>
-            <field name="inherit_id" ref="base.view_company_form"/>
-            <field name="arch" type="xml">
-                <data>
-                    <notebook>
-                        <page string="MercadoLibre">
+		<record model="ir.ui.view" id="view_company_page_mercadolibreb">
+			<field name="name">res.company.form.meli</field>
+			<field name="model">res.company</field>
+			<field name="inherit_id" ref="base.view_company_form" />
+			<field name="arch" type="xml">
+				<data>
+					<notebook>
+						<page string="MercadoLibre">
 							<group>
-								<field name="mercadolibre_state" invisible="0"/>
+								<field name="mercadolibre_state" />
 								<field name="mercadolibre_client_id" />
 								<field name="mercadolibre_secret_key" />
 								<field name="mercadolibre_redirect_uri" />
-								<field name="mercadolibre_access_token" invisible="0"/>
-								<field name="mercadolibre_refresh_token" invisible="0"/>
-								<field name="mercadolibre_code" invisible="0"/>
-                <field name="mercadolibre_category_import" invisible="0"/>
-                <field name="mercadolibre_recursive_import" invisible="0"/>
-                <field name="mercadolibre_seller_id" invisible="0"/>
-
-
-								<button name='meli_login' type="object"
-										string="Iniciar sesión en MLA" attrs="{'invisible':[('mercadolibre_state','=',False)]}"/>
-
-								<button name='meli_logout' type="object"
-										string="Cerrar sesión con MLA" attrs="{'invisible':[('mercadolibre_state','=',True)]}"/>
-
-                                <button name='meli_query_orders' type="object"
-										string="Iniciar búsqueda de órdenes en MLA" attrs="{'invisible':[('mercadolibre_state','=',True)]}"/>
-
+								<field name="mercadolibre_access_token" />
+								<field name="mercadolibre_refresh_token" />
+								<field name="mercadolibre_code" />
+								<field name="mercadolibre_category_import" />
+								<field name="mercadolibre_recursive_import" />
+								<field name="mercadolibre_seller_id" />
+								<button name='meli_login' type="object" string="Iniciar sesión en MLA"
+									attrs="{'invisible':[('mercadolibre_state','=',False)]}" />
+								<button name='meli_logout' type="object" string="Cerrar sesión con MLA"
+									attrs="{'invisible':[('mercadolibre_state','=',True)]}" />
+								<button name='meli_query_orders' type="object"
+									string="Iniciar búsqueda de órdenes en MLA" attrs="{'invisible':[('mercadolibre_state','=',True)]}" />
 								<button name='meli_query_products' type="object"
-										string="Iniciar búsqueda de productos en MLA" attrs="{'invisible':[('mercadolibre_state','=',True)]}"/>
-
-                    <button name='meli_update_products' type="object"
-    										string="Iniciar actualización de productos y stock desde MLA" attrs="{'invisible':[('mercadolibre_state','=',True)]}"/>
-
-                        <button name='meli_import_categories' type="object"
-                            										string="Iniciar importación de categorías en MLA" attrs="{'invisible':[('mercadolibre_state','=',True)]}"/>
-
-
-<!--
-								<button name='%(meli_login_action)d' type="action"
-										string="Login en MLA (action)"/>
-
-								<a href="/meli_login" target="_blank">URL</a>-->
+									string="Iniciar búsqueda de productos en MLA" attrs="{'invisible':[('mercadolibre_state','=',True)]}" />
+								<button name='meli_update_products' type="object"
+									string="Iniciar actualización de productos y stock desde MLA"
+									attrs="{'invisible':[('mercadolibre_state','=',True)]}" />
+								<button name='meli_import_categories' type="object"
+									string="Iniciar importación de categorías en MLA" attrs="{'invisible':[('mercadolibre_state','=',True)]}" />
 							</group>
-                        </page>
-                    </notebook>
-                </data>
-            </field>
-        </record>
+						</page>
+					</notebook>
+				</data>
+			</field>
+		</record>
 
-
-    </data>
-</openerp>
+	</data>
+</odoo>
