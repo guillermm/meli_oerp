@@ -29,9 +29,9 @@ class MercadolibreCategory(models.Model):
     _name = "mercadolibre.category"
     _description = "Categories of MercadoLibre"
 
-    name = fields.Char('Name');
-    meli_category_id = fields.Char('Category Id');
-    public_category_id = fields.Integer('Public Category Id');
+    name = fields.Char('Name')
+    meli_category_id = fields.Char('Category Id')
+    public_category_id = fields.Integer('Public Category Id')
 
     def import_category(self, category_id ):
         category_model = self.env['mercadolibre.category']

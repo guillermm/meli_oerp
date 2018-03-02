@@ -12,10 +12,10 @@ class warning(models.TransientModel):
     _description = 'warning'
     _req_name = 'title'
     
-    type = fields.Selection(WARNING_TYPES, string='Type', readonly=True);
-    title = fields.Char(string="Title", size=100, readonly=True);
-    message = fields.Text(string="Message", readonly=True);
-    message_html = fields.Html(string="Message HTML", readonly=True);
+    type = fields.Selection(WARNING_TYPES, string='Type', readonly=True)
+    title = fields.Char(string="Title", size=100, readonly=True)
+    message = fields.Text(string="Message", readonly=True)
+    message_html = fields.Html(string="Message HTML", readonly=True)
 
     def _get_view_id(self ):
         """Get the view id
