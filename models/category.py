@@ -23,8 +23,6 @@ import logging
 
 from odoo import fields, osv, models, api
 
-from ..melisdk.meli import Meli
-
 _logger = logging.getLogger(__name__)
 
 class MercadolibreCategory(models.Model):
@@ -36,13 +34,9 @@ class MercadolibreCategory(models.Model):
     public_category_id = fields.Integer('Public Category Id');
 
     def import_category(self, category_id ):
-        company = self.env.user.company_id
         category_model = self.env['mercadolibre.category']
-        CLIENT_ID = company.mercadolibre_client_id
-        CLIENT_SECRET = company.mercadolibre_secret_key
-        ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
-        meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
+        meli_util_model = self.env['meli.util']
+        meli = meli_util_model.get_new_instance()
         if (category_id):
             ml_cat_id = category_model.search([('meli_category_id','=',category_id)])
             if (ml_cat_id):
@@ -70,14 +64,11 @@ class MercadolibreCategory(models.Model):
 
 
     def import_all_categories(self, category_root ):
-        company = self.env.user.company_id
         warning_model = self.env['warning']
         category_model = self.env['mercadolibre.category']
-        CLIENT_ID = company.mercadolibre_client_id
-        CLIENT_SECRET = company.mercadolibre_secret_key
-        ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
-        meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
+        meli_util_model = self.env['meli.util']
+        company = self.env.user.company_id
+        meli = meli_util_model.get_new_instance()
         RECURSIVE_IMPORT = company.mercadolibre_recursive_import
         if (category_root):
             response = meli.get("/categories/"+str(category_root), {'access_token':meli.access_token} )

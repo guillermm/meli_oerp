@@ -24,8 +24,6 @@ import logging
 
 from odoo import fields, osv, models, api
 
-from ..melisdk.meli import Meli
-
 _logger = logging.getLogger(__name__)
 
 #https://api.mercadolibre.com/questions/search?item_id=MLA508223205
@@ -333,7 +331,7 @@ class mercadolibre_orders(models.Model):
                 payment_ids = payments_obj.search( [  ('payment_id','=',payment_fields['payment_id']),
                                                             ('order_id','=',order.id ) ] )
                 if not payment_ids:
-	                payment_ids = payments_obj.create( ( payment_fields ))
+                    payment_ids = payments_obj.create( ( payment_fields ))
                 else:
                     payment_ids.write( ( payment_fields ) )
         if order:
@@ -341,19 +339,12 @@ class mercadolibre_orders(models.Model):
         return {}
 
     def orders_update_order( self, context=None ):
+        meli_util_model = self.env['meli.util']
         #get with an item id
-        company = self.env.user.company_id
-        order_obj = self.env['mercadolibre.orders']
-        order_items_obj = self.env['mercadolibre.order_items']
         order = self
         log_msg = 'orders_update_order: %s' % (order.order_id)
         _logger.info(log_msg)
-        CLIENT_ID = company.mercadolibre_client_id
-        CLIENT_SECRET = company.mercadolibre_secret_key
-        ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
-        #
-        meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN )
+        meli = meli_util_model.get_new_instance()
         response = meli.get("/orders/"+order.order_id, {'access_token':meli.access_token})
         order_json = response.json()
         _logger.info( order_json )
@@ -365,15 +356,10 @@ class mercadolibre_orders(models.Model):
         return {}
 
     def orders_query_iterate( self, offset=0, context=None ):
+        meli_util_model = self.env['meli.util']
         offset_next = 0
         company = self.env.user.company_id
-        orders_obj = self.env['mercadolibre.orders']
-        CLIENT_ID = company.mercadolibre_client_id
-        CLIENT_SECRET = company.mercadolibre_secret_key
-        ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
-        #
-        meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN )
+        meli = meli_util_model.get_new_instance(company)
         orders_query = "/orders/search?seller="+company.mercadolibre_seller_id+"&sort=date_desc"
         if (offset):
             orders_query = orders_query + "&offset="+str(offset).strip()

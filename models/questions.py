@@ -21,8 +21,6 @@
 
 from odoo import fields, osv, models
 
-from ..melisdk.meli import Meli
-
 #https://api.mercadolibre.com/questions/search?item_id=MLA508223205
 
 class MercadolibreQuestions(models.Model):

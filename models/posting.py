@@ -24,8 +24,6 @@ import logging
 from odoo import fields, osv, models, api
 from odoo.tools.translate import _
 
-from ..melisdk.meli import Meli
-
 _logger = logging.getLogger(__name__)
 
 class MercadolibrePostingUpdate(models.TransientModel):
@@ -64,31 +62,20 @@ class MercadolibrePosting(models.Model):
     posting_questions = fields.One2many( 'mercadolibre.questions','posting_id','Questions' );
     posting_update = fields.Char(compute='posting_update', string="Posting Update", store=False );
 
-    def posting_update( self ):
-        #log_msg = 'posting_update: %s' % (field_name)
-        #_logger.info(log_msg)
-        company = self.env.user.company_id
-        posting_obj = self.env['mercadolibre.posting']
-        posting = self
+    def posting_update(self):
         update_status = "ok"
-        posting.posting_query_questions()
+        self.posting_query_questions()
         res = {}
-        res[posting.id] = update_status
+        res[self.id] = update_status
         return res
 
     def posting_query_questions( self ):
+        meli_util_model = self.env['meli.util']
         #get with an item id
-        company = self.env.user.company_id
-        posting_obj = self.env['mercadolibre.posting']
         posting = self
         log_msg = 'posting_query_questions: %s' % (posting.meli_id)
         _logger.info(log_msg)
-        CLIENT_ID = company.mercadolibre_client_id
-        CLIENT_SECRET = company.mercadolibre_secret_key
-        ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
-        #
-        meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN )
+        meli = meli_util_model.get_new_instance()
         response = meli.get("/items/"+posting.meli_id, {'access_token':meli.access_token})
         product_json = response.json()
         #_logger.info( product_json )
@@ -153,8 +140,4 @@ class MercadolibrePosting(models.Model):
                 else:
                     if question:
                         question.write( (question_fields) )
-        return {}
-
-
-    def posting_query_all_questions( self, cr, uid, ids, context=None ):
         return {}

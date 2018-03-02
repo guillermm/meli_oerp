@@ -27,9 +27,6 @@ from odoo.tools.translate import _
 
 _logger = logging.getLogger(__name__)
 
-#from bottle import Bottle, run, template, route, request
-#import json
-
 from ..melisdk.meli import Meli
 
 class ProductPost(models.TransientModel):
@@ -39,8 +36,8 @@ class ProductPost(models.TransientModel):
 
     type = fields.Selection([('post','Alta'),('put','Editado'),('delete','Borrado')], string='Tipo de operación' );
     posting_date = fields.Date('Fecha del posting');
-	    #'company_id': fields.many2one('res.company',string='Company'),
-	    #'mercadolibre_state': fields.related( 'res.company', 'mercadolibre_state', string="State" )
+    #'company_id': fields.many2one('res.company',string='Company'),
+    #'mercadolibre_state': fields.related( 'res.company', 'mercadolibre_state', string="State" )
 
     def pretty_json( self, data ):
         return json.dumps( data, sort_keys=False, indent=4 )
@@ -58,9 +55,7 @@ class ProductPost(models.TransientModel):
         CLIENT_ID = company.mercadolibre_client_id
         CLIENT_SECRET = company.mercadolibre_secret_key
         ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
-        meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
-        if ACCESS_TOKEN=='' or ACCESS_TOKEN==False:
+        if not ACCESS_TOKEN:
             meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET)
             url_login_meli = meli.auth_url(redirect_URI=REDIRECT_URI)
             return {

@@ -1,9 +1,11 @@
+# -*- coding: utf-8 -*-
 
+import math
 from odoo import models, fields, api
 from odoo.tools.translate import _
-import math
 
 class ResCurrencyRate(models.Model):
+    
     _inherit = 'res.currency.rate'
 
     @api.one

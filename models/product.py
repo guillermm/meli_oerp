@@ -76,36 +76,17 @@ class ProductProduct(models.Model):
     #@api.one
     @api.onchange('lst_price') # if these fields are changed, call method
     def check_change_price(self):
-        #pdb.set_trace();
-        pricelists = self.env['product.pricelist'].search([
-            ('currency_id','=','CLP'),
-            ('website_id','!=',False),
-            ], limit=1)
-        if pricelists:
-            if pricelists.id:
-                pricelist = pricelists.id
-            else:
-                pricelist = pricelists[0].id
         self.meli_price = str(self.lst_price)
-        #res = {}
-        #for id in self:
-        #    res[id] = self.lst_price
-        #return res
 
     def product_meli_get_product( self ):
-        company = self.env.user.company_id
-        product_obj = self.env['product.product']
+        meli_util_model = self.env['meli.util']
         #pdb.set_trace()
         product = self
         _logger.info("product_meli_get_product")
         _logger.info(product)
         product_template_obj = self.env['product.template']
         product_template = product_template_obj.browse(product.product_tmpl_id.id)
-        CLIENT_ID = company.mercadolibre_client_id
-        CLIENT_SECRET = company.mercadolibre_secret_key
-        ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
-        meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
+        meli = meli_util_model.get_new_instance()
         try:
             response = meli.get("/items/"+product.meli_id, {'access_token':meli.access_token})
             #_logger.info(response)
@@ -277,21 +258,19 @@ class ProductProduct(models.Model):
 
     @api.multi
     def product_get_meli_loginstate( self ):
+        meli_util_model = self.env['meli.util']
         # recoger el estado y devolver True o False (meli)
         #False if logged ok
         #True if need login
         self.ensure_one()
         #pdb.set_trace()
         company = self.env.user.company_id
-        CLIENT_ID = company.mercadolibre_client_id
-        CLIENT_SECRET = company.mercadolibre_secret_key
         ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
-        meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
         ML_state = False
-        if ACCESS_TOKEN=='' or ACCESS_TOKEN==False:
+        if not ACCESS_TOKEN:
             ML_state = True
         else:
+            meli = meli_util_model.get_new_instance(company)
             response = meli.get("/users/me", {'access_token':meli.access_token} )
             rjson = response.json()
             if 'error' in rjson:
@@ -307,56 +286,33 @@ class ProductProduct(models.Model):
         #    res[company.id] = ML_state
         #return res
 
-    def product_meli_status_close( self ):
-        company = self.env.user.company_id
-        product_obj = self.env['product.product']
-        product = self
-        CLIENT_ID = company.mercadolibre_client_id
-        CLIENT_SECRET = company.mercadolibre_secret_key
-        ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
-        meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
-        response = meli.put("/items/"+product.meli_id, { 'status': 'closed' }, {'access_token':meli.access_token})
+    def product_meli_status_close(self):
+        meli_util_model = self.env['meli.util']
+        meli = meli_util_model.get_new_instance()
+        response = meli.put("/items/"+self.meli_id, { 'status': 'closed' }, {'access_token':meli.access_token})
         #print "product_meli_status_close: " + response.content
         return {}
 
     def product_meli_status_pause( self ):
-        company = self.env.user.company_id
-        product_obj = self.env['product.product']
-        product = self
-        CLIENT_ID = company.mercadolibre_client_id
-        CLIENT_SECRET = company.mercadolibre_secret_key
-        ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
-        meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
-        response = meli.put("/items/"+product.meli_id, { 'status': 'paused' }, {'access_token':meli.access_token})
+        meli_util_model = self.env['meli.util']
+        meli = meli_util_model.get_new_instance()
+        response = meli.put("/items/"+self.meli_id, { 'status': 'paused' }, {'access_token':meli.access_token})
         #print "product_meli_status_pause: " + response.content
         return {}
 
     def product_meli_status_active( self ):
-        company = self.env.user.company_id
-        product_obj = self.env['product.product']
-        product = self
-        CLIENT_ID = company.mercadolibre_client_id
-        CLIENT_SECRET = company.mercadolibre_secret_key
-        ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
-        meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
-        response = meli.put("/items/"+product.meli_id, { 'status': 'active' }, {'access_token':meli.access_token})
+        meli_util_model = self.env['meli.util']
+        meli = meli_util_model.get_new_instance()
+        response = meli.put("/items/"+self.meli_id, { 'status': 'active' }, {'access_token':meli.access_token})
         #print "product_meli_status_active: " + response.content
         return {}
 
     def product_meli_delete( self ):
-        company = self.env.user.company_id
-        product_obj = self.env['product.product']
+        meli_util_model = self.env['meli.util']
+        meli = meli_util_model.get_new_instance()
         product = self
         if product.meli_status!='closed':
             self.product_meli_status_close()
-        CLIENT_ID = company.mercadolibre_client_id
-        CLIENT_SECRET = company.mercadolibre_secret_key
-        ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
-        meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
         response = meli.put("/items/"+product.meli_id, { 'deleted': 'true' }, {'access_token':meli.access_token})
         #print "product_meli_delete: " + response.content
         rjson = response.json()
@@ -369,27 +325,20 @@ class ProductProduct(models.Model):
         return {}
 
     def product_meli_upload_image( self ):
-        company = self.env.user.company_id
-        product_obj = self.env['product.product']
+        meli_util_model = self.env['meli.util']
+        meli = meli_util_model.get_new_instance()
         product = self
-        CLIENT_ID = company.mercadolibre_client_id
-        CLIENT_SECRET = company.mercadolibre_secret_key
-        ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
-        #
-        meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
         if product.image==None or product.image==False:
             return { 'status': 'error', 'message': 'no image to upload' }
         # print "product_meli_upload_image"
         #print "product_meli_upload_image: " + response.content
         imagebin = base64.b64decode(product.image)
-        imageb64 = product.image
 #       print "data:image/png;base64,"+imageb64
 #       files = [ ('images', ('image_medium', imagebin, "image/png")) ]
         files = { 'file': ('image.jpg', imagebin, "image/jpeg"), }
         #print  files
         response = meli.upload("/pictures", files, { 'access_token': meli.access_token } )
-       # print response.content
+        # print response.content
         rjson = response.json()
         if ("error" in rjson):
             raise osv.except_osv( _('MELI WARNING'), _('No se pudo cargar la imagen en MELI! Error: %s , Mensaje: %s, Status: %s') % ( rjson["error"], rjson["message"],rjson["status"],))
@@ -406,15 +355,9 @@ class ProductProduct(models.Model):
         return { 'status': 'success', 'message': 'uploaded and assigned' }
 
     def product_meli_upload_multi_images( self  ):
-        company = self.env.user.company_id
-        product_obj = self.env['product.product']
+        meli_util_model = self.env['meli.util']
+        meli = meli_util_model.get_new_instance()
         product = self
-        CLIENT_ID = company.mercadolibre_client_id
-        CLIENT_SECRET = company.mercadolibre_secret_key
-        ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
-        #
-        meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
         if product.product_image_ids==None:
             return { 'status': 'error', 'message': 'no images to upload' }
         image_ids = []
@@ -442,12 +385,7 @@ class ProductProduct(models.Model):
     def product_on_change_meli_banner(self, banner_id ):
         banner_obj = self.env['mercadolibre.banner']
         #solo para saber si ya habia una descripcion completada
-        product_obj = self.env['product.product']
         product = self
-        #if len(ids):
-        #    product = self
-        #else:
-        #    product = product_obj.browse(ids)
         banner = banner_obj.browse( banner_id )
         #banner.description
         _logger.info( banner.description )
@@ -465,17 +403,15 @@ class ProductProduct(models.Model):
     def product_get_meli_status( self ):
         self.ensure_one()
         #pdb.set_trace()
+        meli_util_model = self.env['meli.util']
         company = self.env.user.company_id
         product = self
-        CLIENT_ID = company.mercadolibre_client_id
-        CLIENT_SECRET = company.mercadolibre_secret_key
         ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
         ML_status = "unknown"
-        if ACCESS_TOKEN=='':
+        if not ACCESS_TOKEN:
             ML_status = "unknown"
         else:
-            meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
+            meli = meli_util_model.get_new_instance(company)
             if product.meli_id:
                 response = meli.get("/items/"+product.meli_id, {'access_token':meli.access_token} )
                 rjson = response.json()
@@ -486,26 +422,20 @@ class ProductProduct(models.Model):
                     if len(rjson["sub_status"]) and rjson["sub_status"][0]=='deleted':
                         product.write({ 'meli_id': '' })
         self.meli_status = ML_status
-        #res = {}
-        #for product in self:#.browse(cr,uid,ids):
-        #    res[product.id] = ML_status
-        #return res
 
     @api.multi
     def product_get_permalink( self ):
+        meli_util_model = self.env['meli.util']
         #pdb.set_trace()
         self.ensure_one()
         company = self.env.user.company_id
         product = self
-        CLIENT_ID = company.mercadolibre_client_id
-        CLIENT_SECRET = company.mercadolibre_secret_key
         ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
         ML_permalink = ""
-        if ACCESS_TOKEN=='':
+        if not ACCESS_TOKEN:
             ML_permalink = ""
         else:
-            meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
+            meli = meli_util_model.get_new_instance(company)
             if product.meli_id:
                 response = meli.get("/items/"+product.meli_id, {'access_token':meli.access_token} )
                 rjson = response.json()
@@ -517,15 +447,9 @@ class ProductProduct(models.Model):
                     #if len(rjson["sub_status"]) and rjson["sub_status"][0]=='deleted':
                     #    product.write({ 'meli_id': '' })
         self.meli_permalink = ML_permalink
-        #res = {}
-        #for product in self:#.browse(cr,uid,ids):
-        #    res[company.id] = ML_permalink
-        #return res
 
     def product_post(self):
-        #import pdb;pdb.set_trace();
-#        product_ids = context['active_ids']
-#        pdb.set_trace()
+        meli_util_model = self.env['meli.util']
         product = self
         company = self.env.user.company_id
         warningobj = self.env['warning']
@@ -533,9 +457,7 @@ class ProductProduct(models.Model):
         CLIENT_ID = company.mercadolibre_client_id
         CLIENT_SECRET = company.mercadolibre_secret_key
         ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
-        meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
-        if ACCESS_TOKEN=='':
+        if not ACCESS_TOKEN:
             meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET)
             url_login_meli = meli.auth_url(redirect_URI=REDIRECT_URI)
             return {
@@ -543,6 +465,7 @@ class ProductProduct(models.Model):
                 "url": url_login_meli,
                 "target": "new",
             }
+        meli = meli_util_model.get_new_instance(company)
         if (product.meli_id):
             response = meli.get("/items/%s" % product.meli_id, {'access_token':meli.access_token})
         # print product.meli_category.meli_category_id
@@ -567,7 +490,6 @@ class ProductProduct(models.Model):
             "video_id": product.meli_video  or '',
         }
         # print body
-        assign_img = False and product.meli_id
         #publicando imagen cargada en OpenERP
         if product.image==None:
             return warningobj.info( title='MELI WARNING', message="Debe cargar una imagen de base en el producto.", message_html="" )
@@ -578,8 +500,6 @@ class ProductProduct(models.Model):
                 if (resim["status"]=="error" or resim["status"]=="warning"):
                     error_msg = 'MELI: mensaje de error:   ', resim
                     _logger.error(error_msg)
-                else:
-                    assign_img = True and product.meli_imagen_id
         #modificando datos si ya existe el producto en MLA
         if (product.meli_id):
             body = {
@@ -621,7 +541,6 @@ class ProductProduct(models.Model):
                 else:
                     body["pictures"] = [ { 'source': product.meli_imagen_logo} ]
         else:
-            imagen_producto = ""
             if (product.meli_description!="" and product.meli_description!=False and product.meli_imagen_link!=""):
                 imgtag = "<img style='width: 420px; height: auto;' src='%s'/>" % ( product.meli_imagen_link )
                 result = product.meli_description.replace( "[IMAGEN_PRODUCTO]", imgtag )
@@ -641,7 +560,6 @@ class ProductProduct(models.Model):
         if product.meli_id:
             response = meli.put("/items/"+product.meli_id, body, {'access_token':meli.access_token})
         else:
-            assign_img = True and product.meli_imagen_id
             response = meli.post("/items", body, {'access_token':meli.access_token})
         #check response
         # print response.content
@@ -661,7 +579,7 @@ class ProductProduct(models.Model):
                 #raise osv.except_osv( _('MELI WARNING'), _('INVALID TOKEN or EXPIRED TOKEN (must login, go to Edit Company and login):  error: %s, message: %s, status: %s') % ( rjson["error"], rjson["message"],rjson["status"],))
                 return warningobj.info( title='MELI WARNING', message="Debe iniciar sesión en MELI.  ", message_html="")
             else:
-                 #Any other errors
+                #Any other errors
                 return warningobj.info( title='MELI WARNING', message="Completar todos los campos!  ", message_html="<br><br>"+missing_fields )
         #last modifications if response is OK
         if "id" in rjson:
