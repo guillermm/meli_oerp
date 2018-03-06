@@ -6,9 +6,26 @@
 			<field name="name">mercadolibre.banner.tree</field>
 			<field name="model">mercadolibre.banner</field>
 			<field name="arch" type="xml">
-				<tree string="Banners">
+				<tree create="0" edit="0" delete="0">
 					<field name="name" />
 				</tree>
+			</field>
+		</record>
+
+		<record model="ir.ui.view" id="view_meli_banner_form">
+			<field name="name">mercadolibre.banner.form</field>
+			<field name="model">mercadolibre.banner</field>
+			<field name="arch" type="xml">
+				<form create="0" edit="0" delete="0">
+					<sheet>
+						<group colspan="2">
+							<field name="name" required="1" />
+						</group>
+						<group colspan="2" string="Descripcion">
+							<field name="description" nolabel="1" />
+						</group>
+					</sheet>
+				</form>
 			</field>
 		</record>
 

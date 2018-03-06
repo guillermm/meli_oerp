@@ -256,7 +256,7 @@ class ProductProduct(models.Model):
 	        "target": "new",
         }
 
-    @api.multi
+    @api.one
     def product_get_meli_loginstate( self ):
         meli_util_model = self.env['meli.util']
         # recoger el estado y devolver True o False (meli)
@@ -423,7 +423,7 @@ class ProductProduct(models.Model):
                         product.write({ 'meli_id': '' })
         self.meli_status = ML_status
 
-    @api.multi
+    @api.one
     def product_get_permalink( self ):
         meli_util_model = self.env['meli.util']
         #pdb.set_trace()

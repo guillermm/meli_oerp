@@ -6,7 +6,7 @@
 			<field name="name">mercadolibre.orders.tree</field>
 			<field name="model">mercadolibre.orders</field>
 			<field name="arch" type="xml">
-				<tree string="Orders">
+				<tree create="0" edit="0" delete="0">
 					<field name="order_id" />
 					<field name="status" />
 					<field name="date_created" />
@@ -20,21 +20,23 @@
 			<field name="model">sale.order</field>
 			<field name="inherit_id" ref="sale.view_order_form" />
 			<field name="arch" type="xml">
-				<data>
-					<notebook>
-						<page string="MercadoLibre">
+				<xpath expr="//notebook" position="inside">
+					<page string="MercadoLibre">
+						<group>
 							<group>
 								<field name="meli_order_id" />
-								<field name="meli_status" />
 								<field name="meli_status_detail" />
-								<field name="meli_total_amount" />
-								<field name="meli_currency_id" />
 								<field name="meli_date_created" />
+								<field name="meli_currency_id" />
+							</group>
+							<group>
+								<field name="meli_status" />
+								<field name="meli_total_amount" />
 								<field name="meli_date_closed" />
 							</group>
-						</page>
-					</notebook>
-				</data>
+						</group>
+					</page>
+				</xpath>
 			</field>
 		</record>
 
@@ -43,15 +45,13 @@
 			<field name="model">res.partner</field>
 			<field name="inherit_id" ref="base.view_partner_form" />
 			<field name="arch" type="xml">
-				<data>
-					<notebook>
-						<page string="MercadoLibre">
-							<group>
-								<field name="meli_buyer_id" />
-							</group>
-						</page>
-					</notebook>
-				</data>
+				<xpath expr="//notebook" position="inside">
+					<page string="MercadoLibre">
+						<group>
+							<field name="meli_buyer_id" />
+						</group>
+					</page>
+				</xpath>
 			</field>
 		</record>
 
@@ -60,11 +60,37 @@
 			<field name="name">mercadolibre.buyers.tree</field>
 			<field name="model">mercadolibre.buyers</field>
 			<field name="arch" type="xml">
-				<tree string="Buyers">
+				<tree create="0" edit="0" delete="0">
 					<field name="buyer_id" />
+					<field name="first_name" />
+					<field name="last_name" />
 					<field name="nickname" />
 					<field name="email" />
+					<field name="phone" />
 				</tree>
+			</field>
+		</record>
+
+		<record model="ir.ui.view" id="view_meli_buyers_form">
+			<field name="name">mercadolibre.buyers.form</field>
+			<field name="model">mercadolibre.buyers</field>
+			<field name="arch" type="xml">
+				<form create="0" edit="0" delete="0">
+					<sheet>
+						<group>
+							<group>
+								<field name="first_name" />
+								<field name="nickname" />
+								<field name="email" />
+							</group>
+							<group>
+								<field name="last_name" />
+								<field name="buyer_id" />
+								<field name="phone" />
+							</group>
+						</group>
+					</sheet>
+				</form>
 			</field>
 		</record>
 
@@ -72,18 +98,32 @@
 			<field name="name">mercadolibre.orders.form</field>
 			<field name="model">mercadolibre.orders</field>
 			<field name="arch" type="xml">
-				<form string="Order">
-					<field name="seller" />
-					<field name="order_id" />
-					<field name="status" />
-					<field name="date_created" />
-					<field name="date_closed" />
-					<field name="status_detail" />
-					<field name="order_items" />
-					<field name="total_amount" />
-					<field name="currency_id" />
-					<field name="buyer" />
-					<field name="payments" />
+				<form create="0" edit="0" delete="0">
+					<sheet>
+						<group>
+							<group>
+								<field name="seller" />
+								<field name="order_id" />
+								<field name="status_detail" />
+								<field name="buyer" />
+							</group>
+							<group>
+								<field name="status" />
+								<field name="date_created" />
+								<field name="date_closed" />
+								<field name="total_amount" />
+								<field name="currency_id" />
+							</group>
+						</group>
+						<notebook colspan="2">
+							<page string="Productos">
+								<field name="order_items" />
+							</page>
+							<page string="Pagos">
+								<field name="payments" />
+							</page>
+						</notebook>
+					</sheet>
 				</form>
 			</field>
 		</record>
@@ -92,7 +132,7 @@
 			<field name="name">mercadolibre.order_items.tree</field>
 			<field name="model">mercadolibre.order_items</field>
 			<field name="arch" type="xml">
-				<tree string="Order Items">
+				<tree create="0" edit="0" delete="0">
 					<field name="posting_id" />
 					<field name="order_id" />
 					<field name="order_item_id" />
@@ -106,7 +146,7 @@
 			<field name="name">mercadolibre.payments.tree</field>
 			<field name="model">mercadolibre.payments</field>
 			<field name="arch" type="xml">
-				<tree string="Payments">
+				<tree create="0" edit="0" delete="0">
 					<field name="payment_id" />
 					<field name="transaction_amount" />
 					<field name="currency_id" />
@@ -122,7 +162,7 @@
 			<field name="name">MercadoLibre Orders - Search</field>
 			<field name="model">mercadolibre.orders</field>
 			<field name="arch" type="xml">
-				<search string="Search MercadoLibre Orders Information">
+				<search>
 					<filter string='Status' icon="terp-mrp" domain="[]"
 						context="{'group_by' : 'status'}" />
 				</search>
@@ -133,7 +173,7 @@
 			<field name="name">MercadoLibre Buyers - Search</field>
 			<field name="model">mercadolibre.buyers</field>
 			<field name="arch" type="xml">
-				<search string="Search MercadoLibre Buyers Information">
+				<search>
 					<filter string='Status' icon="terp-mrp" domain="[]"
 						context="{'group_by' : 'nickname'}" />
 				</search>
@@ -146,7 +186,7 @@
 			<field name="model">mercadolibre.orders.update</field>
 			<field name="type">form</field>
 			<field name="arch" type="xml">
-				<form string="Update Order">
+				<form>
 					<footer>
 						<button name="order_update" string="Update Order" type="object"
 							class="oe_highlight" />

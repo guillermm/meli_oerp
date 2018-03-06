@@ -27,6 +27,7 @@ class MercadolibreQuestions(models.Model):
 	
 	_name = "mercadolibre.questions"
 	_description = "Preguntas en MercadoLibre"
+	_rec_name = 'question_id'
 
 	posting_id = fields.Many2one("mercadolibre.posting","Posting")
 	question_id = fields.Char('Question Id')

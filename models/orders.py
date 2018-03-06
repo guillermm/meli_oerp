@@ -74,6 +74,7 @@ class mercadolibre_orders(models.Model):
     
     _name = "mercadolibre.orders"
     _description = "Pedidos en MercadoLibre"
+    _rec_name = 'order_id'
 
     def billing_info( self, billing_json, context=None ):
         billinginfo = ''
@@ -464,6 +465,14 @@ class MercadolibreBuyers(models.Model):
     first_name = fields.Char( string='First Name')
     last_name = fields.Char( string='Last Name')
     billing_info = fields.Char( string='Billing Info')
+    
+    @api.multi
+    def name_get(self):
+        res = []
+        for buyer in self:
+            name = u"%s %s" % (buyer.first_name or '', buyer.last_name or '')
+            res.append((buyer.id, name))
+        return res
 
 class MercadolibreOrdersUpdate(models.TransientModel):
     

@@ -6,7 +6,7 @@
 			<field name="name">mercadolibre.posting.tree</field>
 			<field name="model">mercadolibre.posting</field>
 			<field name="arch" type="xml">
-				<tree string="Postings">
+				<tree create="0" edit="0" delete="0">
 					<field name="name" />
 					<field name="posting_date" />
 					<field name="product_id" />
@@ -23,18 +23,28 @@
 			<field name="name">mercadolibre.posting.form</field>
 			<field name="model">mercadolibre.posting</field>
 			<field name="arch" type="xml">
-				<form string="ML Posting">
-					<group>
-						<field name="name" />
-						<field name="posting_date" />
-						<field name="meli_id" />
-						<field name="product_id" />
-						<field name="meli_permalink" widget="url" />
-						<field name="meli_status" />
-						<field name="meli_price" />
-						<field name="posting_questions" />
-						<field name="posting_update" />
-					</group>
+				<form create="0" edit="0" delete="0">
+					<sheet>
+						<group>
+							<group>
+								<field name="name" />
+								<field name="meli_id" />
+								<field name="product_id" />
+								<field name="meli_price" />
+							</group>
+							<group>
+								<field name="posting_date" />
+								<field name="meli_permalink" widget="url" />
+								<field name="meli_status" />
+								<field name="posting_update" />
+							</group>
+						</group>
+						<notebook colspan="2">
+							<page string="Preguntas">
+								<field name="posting_questions" />
+							</page>
+						</notebook>
+					</sheet>
 				</form>
 			</field>
 		</record>
@@ -43,7 +53,7 @@
 			<field name="name">MercadoLibre Posting - Search</field>
 			<field name="model">mercadolibre.posting</field>
 			<field name="arch" type="xml">
-				<search string="Search MercadoLibre Posting Information">
+				<search>
 					<filter string='Status' icon="terp-mrp" domain="[]"
 						context="{'group_by' : 'meli_status'}" />
 				</search>
@@ -55,7 +65,7 @@
 			<field name="model">mercadolibre.posting.update</field>
 			<field name="type">form</field>
 			<field name="arch" type="xml">
-				<form string="Update questions">
+				<form>
 					<footer>
 						<button name="action_posting_update" string="Update Posting Questions"
 							type="object" class="oe_highlight" />
