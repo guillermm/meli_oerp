@@ -212,10 +212,15 @@ class ResCompany(models.Model):
 
     def product_meli_update_products( self ):
         _logger.info('company.product_meli_update_products() ')
-        products = self.env['product.product'].search([('meli_pub','=',True)])
+        #buscar productos que hayan sido publicados en ML
+        #para actualizarlos masivamente 
+        products = self.env['product.product'].search([
+            ('meli_pub','=',True),
+            ('meli_id','!=',False),
+        ])
         if products:
             for product in products:
-                _logger.info( "Product to update: " + str(product.id)  )
+                _logger.info("Product to update: %s", product.id)
                 #_logger.info( "Product to update name: " + str(obj.name)  )
                 #obj.product_meli_get_product()
                 #import pdb; pdb.set_trace()

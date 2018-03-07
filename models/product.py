@@ -358,14 +358,13 @@ class ProductProduct(models.Model):
         meli_util_model = self.env['meli.util']
         meli = meli_util_model.get_new_instance()
         product = self
-        if product.product_image_ids==None:
+        if not product.product_image_ids:
             return { 'status': 'error', 'message': 'no images to upload' }
         image_ids = []
         c = 0
         #loop over images
         for product_image in product.product_image_ids:
             if (product_image.image):
-                print "product_image.image:" + str(product_image.image)
                 imagebin = base64.b64decode( product_image.image )
                 #files = { 'file': ('image.png', imagebin, "image/png"), }
                 files = { 'file': ('image.jpg', imagebin, "image/jpeg"), }
@@ -491,9 +490,9 @@ class ProductProduct(models.Model):
         }
         # print body
         #publicando imagen cargada en OpenERP
-        if product.image==None:
+        if not product.image:
             return warningobj.info( title='MELI WARNING', message="Debe cargar una imagen de base en el producto.", message_html="" )
-        elif product.meli_imagen_id==False:
+        elif not product.meli_imagen_id:
             # print "try uploading image..."
             resim = product.product_meli_upload_image()
             if "status" in resim:
@@ -526,20 +525,11 @@ class ProductProduct(models.Model):
         #asignando imagen de logo (por source)
         #if product.meli_imagen_logo:
         if product.meli_imagen_id:
-            if 'pictures' in body.keys():
-                body["pictures"]+= [ { 'id': product.meli_imagen_id } ]
-            else:
-                body["pictures"] = [ { 'id': product.meli_imagen_id } ]
+            body.setdefault('pictures', []).append({'id': product.meli_imagen_id})
             if (multi_images_ids):
-                if 'pictures' in body.keys():
-                    body["pictures"]+= multi_images_ids
-                else:
-                    body["pictures"] = multi_images_ids
+                body.setdefault('pictures', []).extend(multi_images_ids)
             if product.meli_imagen_logo:
-                if 'pictures' in body.keys():
-                    body["pictures"]+= [ { 'source': product.meli_imagen_logo} ]
-                else:
-                    body["pictures"] = [ { 'source': product.meli_imagen_logo} ]
+                body.setdefault('pictures', []).append({'source': product.meli_imagen_logo})
         else:
             if (product.meli_description!="" and product.meli_description!=False and product.meli_imagen_link!=""):
                 imgtag = "<img style='width: 420px; height: auto;' src='%s'/>" % ( product.meli_imagen_link )

@@ -71,10 +71,10 @@ class ProductPost(models.TransientModel):
             if (product.meli_pub and not product.meli_id):
                 res = product.product_post()
             #Actualiza
-            if (product.meli_pub and product.meli_id):
+            elif (product.meli_pub and product.meli_id):
                 res = product.product_post()
             #Pausa
-            if (not product.meli_pub and product.meli_id):
+            elif (not product.meli_pub and product.meli_id):
                 res = product.product_meli_status_pause()
             if 'name' in res:
                 return res
