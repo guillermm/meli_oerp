@@ -21,7 +21,7 @@
 								class="oe_stat_button" icon="fa-cloud-download"
 								attrs="{'invisible':['|',('meli_state','=',True),('meli_id','=',False)]}" />
 							<button name='%(action_product_post)d' type="action"
-								string="Publicar producto en MLA" class="oe_stat_button" icon="fa-globe"
+								string="Publicar producto en MLA" class="oe_stat_button oe_highlight" icon="fa-globe" 
 								attrs="{'invisible':['|',('meli_state','=',True),('meli_id','!=',False)]}" />
 							<button name='%(action_product_post)d' type="action"
 								string="Actualizar producto en MLA" class="oe_stat_button" icon="fa-refresh"
@@ -31,12 +31,15 @@
 								attrs="{'invisible':['|',('meli_state','=',True),('meli_id','=',False)]}" />
 							<button name='product_meli_status_pause' type="object"
 								string="Pausar producto en MLA" class="oe_stat_button" icon="fa-pause-circle"
+								confirm="Esta seguro de Pausar este Producto en Mercado Libre?"
 								attrs="{'invisible':['|',('meli_state','=',True),('meli_id','=',False)]}" />
 							<button name='product_meli_status_close' type="object"
 								string="Cerrar producto en MLA" class="oe_stat_button" icon="fa-times-circle-o"
+								confirm="Esta seguro de Cerrar este Producto en Mercado Libre?"
 								attrs="{'invisible':['|',('meli_state','=',True),('meli_id','=',False)]}" />
 							<button name='product_meli_delete' type="object"
 								string="Eliminar producto de MLA" class="oe_stat_button" icon="fa-trash-o"
+								confirm="Esta seguro de Eliminar este Producto en Mercado Libre?. Esta accion no podra revertirse"
 								attrs="{'invisible':['|',('meli_state','=',True),('meli_id','=',False)]}" />
 							<button name='product_meli_upload_image' type="object"
 								class="oe_stat_button" icon="fa-cloud-upload" string="Subir imagen a MLA"

@@ -316,7 +316,7 @@ class ProductProduct(models.Model):
         response = meli.put("/items/"+product.meli_id, { 'deleted': 'true' }, {'access_token':meli.access_token})
         #print "product_meli_delete: " + response.content
         rjson = response.json()
-        ML_status = rjson["status"]
+        ML_status = rjson.get("status")
         if "error" in rjson:
             ML_status = rjson["error"]
         if "sub_status" in rjson:
