@@ -32,6 +32,7 @@ class MercadolibreCategory(models.Model):
     name = fields.Char('Name')
     meli_category_id = fields.Char('Category Id')
     public_category_id = fields.Integer('Public Category Id')
+    listing_allowed = fields.Boolean(u'Permitido Postear productos?')
 
     def import_category(self, category_id ):
         category_model = self.env['mercadolibre.category']
@@ -59,6 +60,7 @@ class MercadolibreCategory(models.Model):
                 cat_fields = {
                     'name': fullname,
                     'meli_category_id': ''+str(category_id),
+                    'listing_allowed': rjson_cat.get('settings', {}).get('listing_allowed') or False,
                     }
                 ml_cat_id = category_model.create((cat_fields))
 

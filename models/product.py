@@ -39,7 +39,7 @@ class ProductProduct(models.Model):
     
     meli_imagen_id = fields.Char(string='Imagen Id', size=256)
     meli_post_required = fields.Boolean(string='Este producto es publicable en Mercado Libre')
-    meli_id = fields.Char( string='Id del item asignado por Meli', size=256)
+    meli_id = fields.Char( string='Id del item asignado por Meli', size=256, copy=False)
     meli_permalink = fields.Char(compute='product_get_permalink', size=256, string='PermaLink in MercadoLibre' )
     meli_title = fields.Char(string='Nombre del producto en Mercado Libre',size=256)
     meli_description = fields.Html(string='Descripción')
@@ -487,6 +487,12 @@ class ProductProduct(models.Model):
             "warranty": product.meli_warranty or '',
             #"pictures": [ { 'source': product.meli_imagen_logo} ] ,
             "video_id": product.meli_video  or '',
+            "shipping": {
+               "mode": "me2",
+               "local_pick_up": False,
+               "free_shipping": False,
+               "free_methods": []
+            }
         }
         # print body
         #publicando imagen cargada en OpenERP

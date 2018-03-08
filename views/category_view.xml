@@ -6,10 +6,11 @@
 			<field name="name">mercadolibre.category.tree</field>
 			<field name="model">mercadolibre.category</field>
 			<field name="arch" type="xml">
-				<tree create="0" edit="0" delete="0">
+				<tree create="0" edit="0" delete="0" decoration-success="listing_allowed==True">
 					<field name="name" />
 					<field name="meli_category_id" />
 					<field name="public_category_id" />
+					<field name="listing_allowed" />
 				</tree>
 			</field>
 		</record>
@@ -26,6 +27,7 @@
 								<field name="meli_category_id" />
 							</group>
 							<group>
+								<field name="listing_allowed" />
 								<field name="public_category_id" />
 							</group>
 						</group>
