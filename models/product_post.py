@@ -46,7 +46,7 @@ class ProductPost(models.TransientModel):
         #pdb.set_trace()
         company = self.env.user.company_id
         product_ids = context['active_ids']
-        product_obj = self.env['product.product']
+        product_obj = self.env['product.template']
         #user_obj = self.pool.get('res.users').browse(cr, uid, uid)
         #user_obj.company_id.meli_login()
         #company = user_obj.company_id

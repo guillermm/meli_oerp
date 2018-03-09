@@ -254,7 +254,7 @@ class mercadolibre_orders(models.Model):
                 cn = cn + 1
                 _logger.info(cn)
                 _logger.info(Item )
-                product_related = product_obj.search([('meli_id','=',Item['item']['id'])])
+                product_related = product_obj.search([('meli_id','=',Item['item']['id'])], limit=1)
                 post_related = posting_obj.search([('meli_id','=',Item['item']['id'])])
                 post_related_obj = ''
                 product_related_obj = ''

@@ -16,7 +16,7 @@ class ResCurrencyRate(models.Model):
     @api.model
     def update_prices(self):
         #import pdb;pdb.set_trace();
-        products = self.env['product.product'].search([])
+        products = self.env['product.template'].search([])
 
         pricelists = self.env['product.pricelist'].search([])
         #pricelist = pricelists[0]

@@ -177,7 +177,7 @@ class ResCompany(models.Model):
                 print item_id
                 iitem+= 1
                 _logger.info( item_id + "("+str(iitem)+"/"+str(rjson['paging']['total'])+")" )
-                posting_id = self.env['product.product'].search([('meli_id','=',item_id)])
+                posting_id = self.env['product.template'].search([('meli_id','=',item_id)])
                 response = meli.get("/items/"+item_id, {'access_token':meli.access_token})
                 rjson3 = response.json()
                 if (posting_id):
@@ -192,7 +192,7 @@ class ResCompany(models.Model):
                             'meli_id': rjson3['id']
                         }
                         prod_fields['default_code'] = rjson3['id']
-                        productcreated = self.env['product.product'].create((prod_fields))
+                        productcreated = self.env['product.template'].create((prod_fields))
                         if (productcreated):
                             _logger.info( "product created: " + str(productcreated) + " >> meli_id:" + str(rjson3['id']) + "-" + str( rjson3['title'].encode("utf-8")) )
                             #pdb.set_trace()
@@ -214,7 +214,7 @@ class ResCompany(models.Model):
         _logger.info('company.product_meli_update_products() ')
         #buscar productos que hayan sido publicados en ML
         #para actualizarlos masivamente 
-        products = self.env['product.product'].search([
+        products = self.env['product.template'].search([
             ('meli_pub','=',True),
             ('meli_id','!=',False),
         ])

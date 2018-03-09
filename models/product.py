@@ -25,17 +25,18 @@ import base64
 import urllib2
 from datetime import datetime
 
-from odoo import models, fields, api, osv
+from odoo import models, fields, api
 from odoo.tools.translate import _
 from odoo import tools
+from odoo.exceptions import UserError, ValidationError
 
 from ..melisdk.meli import Meli
 
 _logger = logging.getLogger(__name__)
 
-class ProductProduct(models.Model):
+class ProductTemplate(models.Model):
 
-    _inherit = "product.product"
+    _inherit = "product.template"
     
     meli_imagen_id = fields.Char(string='Imagen Id', size=256)
     meli_post_required = fields.Boolean(string='Este producto es publicable en Mercado Libre')
@@ -68,27 +69,19 @@ class ProductProduct(models.Model):
     ### Agregar imagen/archivo uno o mas, y la descripcion en HTML...
     # TODO Agregar el banner
 
-    _defaults = {
-        'meli_imagen_logo': 'None',
-        'meli_video': ''
-    }
-
     #@api.one
-    @api.onchange('lst_price') # if these fields are changed, call method
+    @api.onchange('list_price') # if these fields are changed, call method
     def check_change_price(self):
-        self.meli_price = str(self.lst_price)
+        self.meli_price = str(self.list_price)
 
     def product_meli_get_product( self ):
         meli_util_model = self.env['meli.util']
         #pdb.set_trace()
-        product = self
         _logger.info("product_meli_get_product")
-        _logger.info(product)
-        product_template_obj = self.env['product.template']
-        product_template = product_template_obj.browse(product.product_tmpl_id.id)
+        _logger.info(self)
         meli = meli_util_model.get_new_instance()
         try:
-            response = meli.get("/items/"+product.meli_id, {'access_token':meli.access_token})
+            response = meli.get("/items/"+self.meli_id, {'access_token':meli.access_token})
             #_logger.info(response)
             rjson = response.json()
             _logger.info(rjson)
@@ -112,7 +105,7 @@ class ProductProduct(models.Model):
         #TODO: traer la descripcion: con
         #https://api.mercadolibre.com/items/{ITEM_ID}/description?access_token=$ACCESS_TOKEN
         if rjson and rjson['descriptions']:
-            response2 = meli.get("/items/"+product.meli_id+"/description", {'access_token':meli.access_token})
+            response2 = meli.get("/items/"+self.meli_id+"/description", {'access_token':meli.access_token})
             rjson2 = response2.json()
             if 'text' in rjson2:
                 des = rjson2['text']
@@ -130,7 +123,7 @@ class ProductProduct(models.Model):
             thumbnail_url = pictures[0]['url']
             image = urllib2.urlopen(thumbnail_url).read()
             image_base64 = base64.encodestring(image)
-            product.image_medium = image_base64
+            self.image_medium = image_base64
             #if (len(pictures)>1):
                 #complete product images:
                 #delete all images...
@@ -218,25 +211,20 @@ class ProductProduct(models.Model):
 ##            'meli_multi_imagen_id': fields.char(string='Multi Imagen Ids', size=512),
             'meli_video': str(vid),
             'meli_dimensions': meli_dim_str,
-        }
-        tmpl_fields = {
-          'name': str(rjson['title'].encode("utf-8")),
-          #'name': str(rjson['id']),
-          'lst_price': rjson['price']
+            'list_price': rjson['price']
         }
         #pdb.set_trace()
         if www_cat_id!=False:
             #assign
-            product_template.public_categ_ids = [(4,www_cat_id)]
+            self.public_categ_ids = [(4,www_cat_id)]
             #tmpl_fields["public_categ_ids"] = [(4,www_cat_id)]
-        product.write( meli_fields )
-        product_template.write( tmpl_fields )
+        self.write( meli_fields )
         if (rjson['available_quantity']>0):
-            product_template.website_published = True
+            self.website_published = True
         else:
-            product_template.website_published = False
+            self.website_published = False
 #{"id":"MLA639109219","site_id":"MLA","title":"Disco Vinilo Queen - Rock - A Kind Of Magic","subtitle":null,"seller_id":171329758,"category_id":"MLA2038","official_store_id":null,"price":31,"base_price":31,"original_price":null,"currency_id":"ARS","initial_quantity":5,"available_quantity":5,"sold_quantity":0,"buying_mode":"buy_it_now","listing_type_id":"free","start_time":"2016-10-17T20:36:22.000Z","stop_time":"2016-12-16T20:36:22.000Z","end_time":"2016-12-16T20:36:22.000Z","expiration_time":null,"condition":"used","permalink":"http://articulo.mercadolibre.com.ar/MLA-639109219-disco-vinilo-queen-rock-a-kind-of-magic-_JM","thumbnail":"http://mla-s1-p.mlstatic.com/256905-MLA25108641321_102016-I.jpg","secure_thumbnail":"https://mla-s1-p.mlstatic.com/256905-MLA25108641321_102016-I.jpg","pictures":[{"id":"256905-MLA25108641321_102016","url":"http://mla-s1-p.mlstatic.com/256905-MLA25108641321_102016-O.jpg","secure_url":"https://mla-s1-p.mlstatic.com/256905-MLA25108641321_102016-O.jpg","size":"500x400","max_size":"960x768","quality":""},{"id":"185215-MLA25150338489_112016","url":"http://www.mercadolibre.com/jm/img?s=STC&v=O&f=proccesing_image_es.jpg","secure_url":"https://www.mercadolibre.com/jm/img?s=STC&v=O&f=proccesing_image_es.jpg","size":"500x500","max_size":"500x500","quality":""}],"video_id":null,"descriptions":[{"id":"MLA639109219-1196717922"}],"accepts_mercadopago":true,"non_mercado_pago_payment_methods":[],"shipping":{"mode":"not_specified","local_pick_up":false,"free_shipping":false,"methods":[],"dimensions":null,"tags":[]},"international_delivery_mode":"none","seller_address":{"id":193196973,"comment":"3B","address_line":"Billinghurst 1711","zip_code":"1425","city":{"id":"TUxBQlBBTDI1MTVa","name":"Palermo"},"state":{"id":"AR-C","name":"Capital Federal"},"country":{"id":"AR","name":"Argentina"},"latitude":-34.5906131,"longitude":-58.4101982,"search_location":{"neighborhood":{"id":"TUxBQlBBTDI1MTVa","name":"Palermo"},"city":{"id":"TUxBQ0NBUGZlZG1sYQ","name":"Capital Federal"},"state":{"id":"TUxBUENBUGw3M2E1","name":"Capital Federal"}}},"seller_contact":null,"location":{},"geolocation":{"latitude":-34.5906131,"longitude":-58.4101982},"coverage_areas":[],"attributes":[],"warnings":[],"listing_source":"","variations":[],"status":"active","sub_status":[],"tags":[],"warranty":null,"catalog_product_id":null,"domain_id":null,"seller_custom_field":null,"parent_item_id":null,"differential_pricing":null,"deal_ids":[],"automatic_relist":false,"date_created":"2016-10-17T20:36:22.000Z","last_updated":"2016-11-07T21:38:10.000Z"}
-        posting_fields = {'posting_date': str(datetime.now()),'meli_id':rjson['id'],'product_id':product.id,'name': 'Post (ML): ' + product.meli_title }
+        posting_fields = {'posting_date': str(datetime.now()),'meli_id':rjson['id'],'product_id':self.product_variant_ids[0].id,'name': 'Post (ML): ' + self.meli_title }
         posting_id = self.env['mercadolibre.posting'].search([('meli_id','=',rjson['id'])]).id
         if not posting_id:
             posting_id = self.env['mercadolibre.posting'].create((posting_fields)).id
@@ -326,10 +314,11 @@ class ProductProduct(models.Model):
 
     def product_meli_upload_image( self ):
         meli_util_model = self.env['meli.util']
+        warningobj = self.env['warning']
         meli = meli_util_model.get_new_instance()
         product = self
-        if product.image==None or product.image==False:
-            return { 'status': 'error', 'message': 'no image to upload' }
+        if not product.image:
+            return warningobj.info( title='MELI WARNING', message="Debe cargar una imagen de base en el producto.", message_html="" )
         # print "product_meli_upload_image"
         #print "product_meli_upload_image: " + response.content
         imagebin = base64.b64decode(product.image)
@@ -341,7 +330,7 @@ class ProductProduct(models.Model):
         # print response.content
         rjson = response.json()
         if ("error" in rjson):
-            raise osv.except_osv( _('MELI WARNING'), _('No se pudo cargar la imagen en MELI! Error: %s , Mensaje: %s, Status: %s') % ( rjson["error"], rjson["message"],rjson["status"],))
+            raise UserError('No se pudo cargar la imagen en MELI! Error: %s , Mensaje: %s, Status: %s' % ( rjson["error"], rjson["message"],rjson["status"],))
             return { 'status': 'error', 'message': 'not uploaded'}
         _logger.info( rjson )
         if ("id" in rjson):
@@ -372,7 +361,7 @@ class ProductProduct(models.Model):
                 print "meli upload:" + response.content
                 rjson = response.json()
                 if ("error" in rjson):
-                    raise osv.except_osv( _('MELI WARNING'), _('No se pudo cargar la imagen en MELI! Error: %s , Mensaje: %s, Status: %s') % ( rjson["error"], rjson["message"],rjson["status"],))
+                    raise UserError(_('No se pudo cargar la imagen en MELI! Error: %s , Mensaje: %s, Status: %s') % ( rjson["error"], rjson["message"],rjson["status"],))
                     #return { 'status': 'error', 'message': 'not uploaded'}
                 else:
                     image_ids+= [ { 'id': rjson['id'] }]
@@ -381,11 +370,11 @@ class ProductProduct(models.Model):
         product.write( { "meli_multi_imagen_id": "%s" % (image_ids) } )
         return image_ids
 
-    def product_on_change_meli_banner(self, banner_id ):
-        banner_obj = self.env['mercadolibre.banner']
+    @api.onchange('meli_description_banner_id',)
+    def product_on_change_meli_banner(self):
         #solo para saber si ya habia una descripcion completada
         product = self
-        banner = banner_obj.browse( banner_id )
+        banner = self.meli_description_banner_id
         #banner.description
         _logger.info( banner.description )
         result = ""
@@ -580,7 +569,7 @@ class ProductProduct(models.Model):
         #last modifications if response is OK
         if "id" in rjson:
             product.write( { 'meli_id': rjson["id"]} )
-        posting_fields = {'posting_date': str(datetime.now()),'meli_id':rjson['id'],'product_id':product.id,'name': 'Post: ' + product.meli_title }
+        posting_fields = {'posting_date': str(datetime.now()),'meli_id':rjson['id'],'product_id':product.product_variant_ids[0].id,'name': 'Post: ' + product.meli_title }
         posting_id = self.env['mercadolibre.posting'].search( [('meli_id','=',rjson['id'])]).id
         if not posting_id:
             posting_id = self.env['mercadolibre.posting'].create((posting_fields)).id
