@@ -31,6 +31,49 @@
 								<field name="public_category_id" />
 							</group>
 						</group>
+						<notebook colspan="2">
+							<page string="Atributos">
+								<field name="attribute_ids" options="{'no_create': True}">
+									<tree>
+										<field name="code" />
+										<field name="name" />
+										<field name="attribute_type" />
+									</tree>
+									<form>
+										<group>
+											<group>
+												<field name="code" />
+												<field name="attribute_type" />
+											</group>
+											<group>
+												<field name="name" />
+											</group>
+										</group>
+										<notebook colspan="2">
+											<page string="Valores"
+												attrs="{'invisible': [('attribute_type','not in',('number_unit', 'list'))]}">
+												<field name="value_ids" options="{'no_create': True}">
+													<tree>
+														<field name="code" />
+														<field name="name" />
+													</tree>
+													<form>
+														<group>
+															<group>
+																<field name="code" />
+															</group>
+															<group>
+																<field name="name" />
+															</group>
+														</group>
+													</form>
+												</field>
+											</page>
+										</notebook>
+									</form>
+								</field>
+							</page>
+						</notebook>
 					</sheet>
 				</form>
 			</field>
