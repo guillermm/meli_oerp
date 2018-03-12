@@ -440,6 +440,27 @@ class ProductTemplate(models.Model):
     def set_meli_fields_aditionals(self, vals):
         self.ensure_one()
         return vals
+    
+    @api.multi
+    def validate_fields_meli(self):
+        self.ensure_one()
+        errors = []
+        fields_required = [
+            'meli_category', 
+            'meli_listing_type',
+            'meli_buying_mode',
+            'meli_currency',
+            'meli_condition',
+        ]
+        for field_name in fields_required:
+            if not field_name in self._fields:
+                continue
+            if not self[field_name]:
+                errors.append("<li>%s</li>" % self._fields[field_name].string)
+        if errors:
+            errors.insert(0, "<ul>")
+            errors.append("</ul>")
+        return errors
 
     def product_post(self):
         meli_util_model = self.env['meli.util']
@@ -459,15 +480,29 @@ class ProductTemplate(models.Model):
                 "target": "new",
             }
         meli = meli_util_model.get_new_instance(company)
-        if (product.meli_id):
-            response = meli.get("/items/%s" % product.meli_id, {'access_token':meli.access_token})
         # print product.meli_category.meli_category_id
-        if product.meli_title==False:
+        if not product.meli_title:
             # print 'Assigning title: product.meli_title: %s name: %s' % (product.meli_title, product.name)
             product.meli_title = product.name
-        if product.meli_price==False:
+        if not product.meli_price:
             # print 'Assigning price: product.meli_price: %s standard_price: %s' % (product.meli_price, product.standard_price)
-            product.meli_price = product.standard_price
+            product.meli_price = product.list_price
+        errors = self.validate_fields_meli()
+        if errors:
+            return warningobj.info(title='ERRORES AL SUBIR PUBLICACION', message="Por favor configure los siguientes campos.", message_html="".join(errors))
+        #publicando imagen cargada en OpenERP
+        if not product.image:
+            return warningobj.info( title='MELI WARNING', message="Debe cargar una imagen de base en el producto.", message_html="" )
+        elif not product.meli_imagen_id:
+            # print "try uploading image..."
+            resim = product.product_meli_upload_image()
+            if "status" in resim:
+                if (resim["status"]=="error" or resim["status"]=="warning"):
+                    error_msg = 'MELI: mensaje de error:   ', resim
+                    _logger.error(error_msg)
+        qty_available = product.qty_available
+        if product.meli_available_quantity:
+            qty_available = product.meli_available_quantity
         body = {
             "title": product.meli_title or '',
             "description": product.meli_description or '',
@@ -477,7 +512,7 @@ class ProductTemplate(models.Model):
             "price": product.meli_price  or '0',
             "currency_id": product.meli_currency  or '0',
             "condition": product.meli_condition  or '',
-            "available_quantity": product.meli_available_quantity  or '0',
+            "available_quantity": max([qty_available, 1]),
             "warranty": product.meli_warranty or '',
             #"pictures": [ { 'source': product.meli_imagen_logo} ] ,
             "video_id": product.meli_video  or '',
@@ -503,26 +538,21 @@ class ProductTemplate(models.Model):
                 })
             if not attribute_combinations:
                 continue
-            variation_data['available_quantity'] = max([product_variant.qty_available, 1]) 
+            qty_available = product_variant.qty_available
+            if product.meli_available_quantity:
+                qty_available = product.meli_available_quantity
+            variation_data['available_quantity'] = max([qty_available, 1]) 
             variation_data['price'] = product_variant.lst_price
             variation_data['attribute_combinations'] = attribute_combinations
             variation_data.setdefault('picture_ids', []).append(self.meli_imagen_id)
             variations.append(variation_data)
         body['variations'] = variations
         body = self.set_meli_fields_aditionals(body)
-        # print body
-        #publicando imagen cargada en OpenERP
-        if not product.image:
-            return warningobj.info( title='MELI WARNING', message="Debe cargar una imagen de base en el producto.", message_html="" )
-        elif not product.meli_imagen_id:
-            # print "try uploading image..."
-            resim = product.product_meli_upload_image()
-            if "status" in resim:
-                if (resim["status"]=="error" or resim["status"]=="warning"):
-                    error_msg = 'MELI: mensaje de error:   ', resim
-                    _logger.error(error_msg)
         #modificando datos si ya existe el producto en MLA
         if (product.meli_id):
+            qty_available = product.qty_available
+            if product.meli_available_quantity:
+                qty_available = product.meli_available_quantity
             body = {
                 "title": product.meli_title or '',
                 #"description": product.meli_description or '',
@@ -532,7 +562,7 @@ class ProductTemplate(models.Model):
                 "price": product.meli_price or '0',
                 #"currency_id": product.meli_currency,
                 "condition": product.meli_condition or '',
-                "available_quantity": product.meli_available_quantity or '0',
+                "available_quantity": max([qty_available, 1]),
                 "warranty": product.meli_warranty or '',
                 "pictures": [],
                 #"pictures": [ { 'source': product.meli_imagen_logo} ] ,
@@ -619,6 +649,7 @@ class ProductTemplate(models.Model):
             'title': self.get_title_for_category_predictor(),
             'price': self.get_price_for_category_predictor(),
         }]
+        _logger.info(vals)
         response = meli.post("/sites/MLC/category_predictor/predict", vals)
         rjson = response.json()
         _logger.info(rjson)
