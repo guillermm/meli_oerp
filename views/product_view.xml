@@ -16,6 +16,9 @@
 				<xpath expr="//page[@name='notes']" position="after">
 					<page string="MercadoLibre" attrs="{'invisible': [('meli_pub','=',False)]}">
 						<div class="oe_button_box" name="button_box_mel">
+							<button name='action_category_predictor' type="object"
+								string="Sugerir Categoria MELI" class="oe_stat_button" icon="fa-refresh"
+								attrs="{'invisible':['|',('meli_state','=',True),('meli_category','!=',False)]}" />
 							<button name='product_meli_get_product' type="object"
 								string="Cargar desde MLA"
 								class="oe_stat_button" icon="fa-cloud-download"

@@ -601,3 +601,31 @@ class ProductTemplate(models.Model):
         if not posting_id:
             posting_id = self.env['mercadolibre.posting'].create((posting_fields)).id
         return {}
+    
+    @api.multi
+    def get_title_for_category_predictor(self):
+        return self.name
+
+    @api.multi
+    def get_price_for_category_predictor(self):
+        return self.meli_price
+    
+    @api.multi
+    def action_category_predictor(self):
+        meli_util_model = self.env['meli.util']
+        warning_model = self.env['warning']
+        meli = meli_util_model.get_new_instance()
+        vals = [{
+            'title': self.get_title_for_category_predictor(),
+            'price': self.get_price_for_category_predictor(),
+        }]
+        response = meli.post("/sites/MLC/category_predictor/predict", vals)
+        rjson = response.json()
+        _logger.info(rjson)
+        if rjson and isinstance(rjson, list):
+            if "id" in rjson[0]:
+                meli_categ = self.env['mercadolibre.category'].import_category(rjson[0]['id'])
+                self.meli_category = meli_categ.id
+                return warning_model.info( title='MELI WARNING', message="CATEGORY PREDICTOR", message_html="Categoria sugerida: %s" % meli_categ.name)
+        return warning_model.info( title='MELI WARNING', message="CATEGORY PREDICTOR", message_html=rjson)
+    
