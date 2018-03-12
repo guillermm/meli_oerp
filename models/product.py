@@ -435,6 +435,11 @@ class ProductTemplate(models.Model):
                     #if len(rjson["sub_status"]) and rjson["sub_status"][0]=='deleted':
                     #    product.write({ 'meli_id': '' })
         self.meli_permalink = ML_permalink
+        
+    @api.multi
+    def set_meli_fields_aditionals(self, vals):
+        self.ensure_one()
+        return vals
 
     def product_post(self):
         meli_util_model = self.env['meli.util']
@@ -483,6 +488,28 @@ class ProductTemplate(models.Model):
                "free_methods": []
             }
         }
+        #ID de COLOR = 83000
+        #ID de TALLA = 73003
+        variations = []
+        for product_variant in self.product_variant_ids:
+            variation_data = {}
+            attribute_combinations = []
+            for attribute in product_variant.attribute_value_ids:
+                if not attribute.attribute_id.meli_id:
+                    continue
+                attribute_combinations.append({
+                    'id': attribute.attribute_id.meli_id,
+                    'value_name': attribute.name,
+                })
+            if not attribute_combinations:
+                continue
+            variation_data['available_quantity'] = max([product_variant.qty_available, 1]) 
+            variation_data['price'] = product_variant.lst_price
+            variation_data['attribute_combinations'] = attribute_combinations
+            variation_data.setdefault('picture_ids', []).append(self.meli_imagen_id)
+            variations.append(variation_data)
+        body['variations'] = variations
+        body = self.set_meli_fields_aditionals(body)
         # print body
         #publicando imagen cargada en OpenERP
         if not product.image:

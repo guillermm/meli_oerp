@@ -97,6 +97,12 @@ class MercadolibreCategory(models.Model):
     attribute_ids = fields.Many2many('mercadolibre.category.attribute', 'mercadolibre_category_attribute_rel', 
         'category_id', 'attribute_id', u'Atributos')
 
+    @api.multi
+    def find_attribute(self, attribute_code):
+        self.ensure_one()
+        attribute = self.attribute_ids.filtered(lambda x: x.code == attribute_code)
+        return attribute
+        
     def import_category(self, category_id):
         attribute_model = self.env['mercadolibre.category.attribute']
         meli_util_model = self.env['meli.util']
