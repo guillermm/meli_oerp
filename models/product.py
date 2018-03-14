@@ -486,7 +486,7 @@ class ProductTemplate(models.Model):
             product.meli_title = product.name
         if not product.meli_price:
             # print 'Assigning price: product.meli_price: %s standard_price: %s' % (product.meli_price, product.standard_price)
-            product.meli_price = product.list_price
+            product.meli_price = int(product.list_price)
         errors = self.validate_fields_meli()
         if errors:
             return warningobj.info(title='ERRORES AL SUBIR PUBLICACION', message="Por favor configure los siguientes campos.", message_html="".join(errors))
@@ -531,6 +531,10 @@ class ProductTemplate(models.Model):
             attribute_combinations = []
             for attribute in product_variant.attribute_value_ids:
                 if not attribute.attribute_id.meli_id:
+                    continue
+                #si el atributo no existe en la categoria no agregarlo xq no dejara hacer la publicacion
+                attribute_meli = self.meli_category.find_attribute(attribute.attribute_id.meli_id)
+                if not attribute_meli:
                     continue
                 attribute_combinations.append({
                     'id': attribute.attribute_id.meli_id,
@@ -642,8 +646,18 @@ class ProductTemplate(models.Model):
     
     @api.multi
     def action_category_predictor(self):
-        meli_util_model = self.env['meli.util']
+        self.ensure_one()
         warning_model = self.env['warning']
+        meli_categ, rjson = self._get_meli_category_from_predictor()
+        if meli_categ:
+            self.meli_category = meli_categ.id
+            return warning_model.info( title='MELI WARNING', message="CATEGORY PREDICTOR", message_html="Categoria sugerida: %s" % meli_categ.name)
+        return warning_model.info( title='MELI WARNING', message="CATEGORY PREDICTOR", message_html=rjson)
+    
+    @api.multi
+    def _get_meli_category_from_predictor(self):
+        self.ensure_one()
+        meli_util_model = self.env['meli.util']
         meli = meli_util_model.get_new_instance()
         vals = [{
             'title': self.get_title_for_category_predictor(),
@@ -653,10 +667,43 @@ class ProductTemplate(models.Model):
         response = meli.post("/sites/MLC/category_predictor/predict", vals)
         rjson = response.json()
         _logger.info(rjson)
+        meli_categ = False
         if rjson and isinstance(rjson, list):
             if "id" in rjson[0]:
                 meli_categ = self.env['mercadolibre.category'].import_category(rjson[0]['id'])
-                self.meli_category = meli_categ.id
-                return warning_model.info( title='MELI WARNING', message="CATEGORY PREDICTOR", message_html="Categoria sugerida: %s" % meli_categ.name)
-        return warning_model.info( title='MELI WARNING', message="CATEGORY PREDICTOR", message_html=rjson)
+        return meli_categ, rjson
     
+    @api.multi
+    def action_sincronice_product_data_ml(self):
+        #Completar los datos por un valor por defecto para los campos que esten vacios
+        vals = {}
+        for template in self:
+            vals = {}
+            if not template.meli_title:
+                vals['meli_title'] = template.name
+            if not template.meli_listing_type:
+                vals['meli_listing_type'] = 'free'
+            #en modo libre solo se permite 1 cantidad de stock, cuando se use otra lista tomar el stock real
+            vals['meli_available_quantity'] = 1
+            if not template.meli_buying_mode:
+                vals['meli_buying_mode'] = 'buy_it_now'
+            if not template.meli_price:
+                vals['meli_price'] = int(template.list_price)
+            if not template.meli_currency:
+                vals['meli_currency'] = 'CLP'
+            if not template.meli_condition:
+                vals['meli_condition'] = 'new'
+            if not template.meli_description:
+                vals['meli_description'] = template.get_description_sale()
+            if not template.meli_category:
+                meli_category, json = template._get_meli_category_from_predictor()
+                if meli_category:
+                    vals['meli_category'] = meli_category.id
+            if vals:
+                template.write(vals)
+        return True
+    
+    @api.multi
+    def _get_description_sale(self):
+        self.ensure_one()
+        return self.description_sale or ''
