@@ -19,16 +19,22 @@
 #
 ##############################################################################
 
-
+import os
 import logging
 import base64
 import urllib2
 from datetime import datetime
+try:
+    import csv
+except ImportError:
+    csv = False
+    raise ImportError('This module needs csv. Please install csv on your system')
 
 from odoo import models, fields, api
 from odoo.tools.translate import _
 from odoo import tools
 from odoo.exceptions import UserError, ValidationError
+from odoo.tools import DEFAULT_SERVER_DATETIME_FORMAT as DTF
 
 from ..melisdk.meli import Meli
 
@@ -463,6 +469,9 @@ class ProductTemplate(models.Model):
 
     def product_post(self):
         meli_util_model = self.env['meli.util']
+        message_list = []
+        return_message_list = self.env.context.get('return_message_list')
+        message_text, message_description = "", ""
         product = self
         company = self.env.user.company_id
         warningobj = self.env['warning']
@@ -488,16 +497,27 @@ class ProductTemplate(models.Model):
             product.meli_price = int(product.list_price)
         errors = self.validate_fields_meli()
         if errors:
-            return warningobj.info(title='ERRORES AL SUBIR PUBLICACION', message="Por favor configure los siguientes campos en el producto: %s." % product.display_name, message_html="".join(errors))
+            message_text = "Por favor configure los siguientes campos en el producto: %s." % product.display_name
+            message_description = "".join(errors)
+            message_list.append((message_text, message_description))
+            return warningobj.info(title='ERRORES AL SUBIR PUBLICACION', message=message_text, message_html=message_description)
         #publicando imagen cargada en OpenERP
         if not product.image:
-            return warningobj.info( title='MELI WARNING', message="Debe cargar una imagen de base en el producto: %s." % product.display_name, message_html="" )
+            message_text = "Debe cargar una imagen de base en el producto: %s." % product.display_name
+            message_description = ""
+            message_list.append((message_text, message_description))
+            if return_message_list:
+                return message_list
+            return warningobj.info( title='MELI WARNING', message=message_text, message_html=message_description)
         elif not product.meli_imagen_id:
             # print "try uploading image..."
             resim = product.product_meli_upload_image()
             if "status" in resim:
                 if (resim["status"]=="error" or resim["status"]=="warning"):
                     error_msg = 'MELI: mensaje de error:   ', resim
+                    message_text = error_msg
+                    message_description = ""
+                    message_list.append((message_text, message_description))
                     _logger.error(error_msg)
         qty_available = product.qty_available
         if product.meli_available_quantity:
@@ -599,7 +619,12 @@ class ProductTemplate(models.Model):
 
         #check fields
         if product.meli_description==False:
-            return warningobj.info(title='MELI WARNING', message="Debe completar el campo 'description' (en html)", message_html="")
+            message_text = "Debe completar el campo 'description' (en html), Producto: %s" % product.display_name
+            message_description = ""
+            message_list.append((message_text, message_description))
+            if return_message_list:
+                return message_list
+            return warningobj.info(title='MELI WARNING', message=message_text, message_html=message_description)
         #put for editing, post for creating
         _logger.info(body)
         if product.meli_id:
@@ -622,10 +647,20 @@ class ProductTemplate(models.Model):
                 url_login_meli = meli.auth_url(redirect_URI=REDIRECT_URI)
                 #print "url_login_meli:", url_login_meli
                 #raise osv.except_osv( _('MELI WARNING'), _('INVALID TOKEN or EXPIRED TOKEN (must login, go to Edit Company and login):  error: %s, message: %s, status: %s') % ( rjson["error"], rjson["message"],rjson["status"],))
-                return warningobj.info( title='MELI WARNING', message="Debe iniciar sesión en MELI.  ", message_html="")
+                message_text = "Debe iniciar sesión en MELI.  "
+                message_description = ""
+                message_list.append((message_text, message_description))
+                if return_message_list:
+                    return message_list
+                return warningobj.info( title='MELI WARNING', message=message_text, message_html="")
             else:
                 #Any other errors
-                return warningobj.info( title='MELI WARNING', message="Completar todos los campos!  ", message_html="<br><br>"+missing_fields )
+                message_text = "Completar todos los campos! Producto: %s" % product.display_name
+                message_description = "<br><br>"+missing_fields
+                message_list.append((message_text, message_description))
+                if return_message_list:
+                    return message_list
+                return warningobj.info( title='MELI WARNING', message=message_text, message_html=message_description)
         #last modifications if response is OK
         if "id" in rjson:
             product.write( { 'meli_id': rjson["id"]} )
@@ -633,6 +668,8 @@ class ProductTemplate(models.Model):
         posting_id = self.env['mercadolibre.posting'].search( [('meli_id','=',rjson['id'])]).id
         if not posting_id:
             posting_id = self.env['mercadolibre.posting'].create((posting_fields)).id
+        if return_message_list:
+            return message_list
         return {}
     
     @api.multi
@@ -710,12 +747,28 @@ class ProductTemplate(models.Model):
     @api.model
     def action_send_products_to_meli(self):
         limit_meli = int(self.env['ir.config_parameter'].get_param('meli.product.limit', '1000').strip())
-        products = self.search([('website_published','=',True),
-                                ('meli_id','=',False),
-                                ], limit=limit_meli)
+        products = self.with_context(return_message_list=True).search([
+            ('website_published','=',True),
+            ('meli_id','=',False),
+            ], limit=limit_meli)
         products.write({'meli_pub': True})
         products.action_sincronice_product_data_ml()
+        message_list = []
+        message = []
         for product in products:
-            product.product_post()
+            message = product.product_post()
+            if isinstance(message, list):
+                message_list.extend(message)
+        if message_list and csv:
+            file_path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'logs'))
+            if not os.path.exists(file_path):
+                os.makedirs(file_path)
+            file_path = os.path.join(file_path, "subir_productos_meli_%s.csv" % fields.Datetime.context_timestamp(self, datetime.now()).strftime('%Y_%m_%d_%H_%M_%S'))
+            fp = open(file_path,'wb')
+            csv_file = csv.writer(fp, quotechar='"', quoting=csv.QUOTE_ALL)
+            csv_file.writerow(['Mensaje', 'Detalle'])
+            for line in message_list:
+                csv_file.writerow([line[0], line[1]])
+            fp.close()
         return True
     
