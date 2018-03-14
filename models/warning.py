@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 
+import logging
+
 from odoo import fields, osv, models
 from odoo.tools.translate import _
 #CHANGE WARNING_MODULE with your module name
 WARNING_MODULE = 'meli_oerp'
 WARNING_TYPES = [('warning','Warning'),('info','Information'),('error','Error')]
+
+_logger = logging.getLogger(__name__)
 
 class warning(models.TransientModel):
     
@@ -44,16 +48,28 @@ class warning(models.TransientModel):
         return res
 
     def warning(self, title, message, message_html=''):
+        msj_logger = "Mensaje: %s" % message
+        if message_html:
+            msj_logger += "Mas Informacion: %s" % message_html
+        _logger.warn(msj_logger)
         id = self.create( {'title': title, 'message': message, 'message_html': message_html, 'type': 'warning'}).id
         res = self._message( id )
         return res
 
     def info(self, title, message, message_html=''):
+        msj_logger = "Mensaje: %s" % message
+        if message_html:
+            msj_logger += "Mas Informacion: %s" % message_html
+        _logger.info(msj_logger)
         id = self.create( {'title': title, 'message': message, 'message_html': message_html, 'type': 'info'}).id
         res = self._message( id )
         return res
 
-    def error(self, title, message, message_html='', context=None):
+    def error(self, title, message, message_html=''):
+        msj_logger = "Mensaje: %s" % message
+        if message_html:
+            msj_logger += "Mas Informacion: %s" % message_html
+        _logger.error(msj_logger)
         id = self.create( {'title': title, 'message': message, 'message_html': message_html, 'type': 'error'}).id
         res = self._message( id)
         return res

@@ -135,15 +135,14 @@ class ProductTemplate(models.Model):
             ml_cat = self.env['mercadolibre.category'].search([('meli_category_id','=',category_id)])
             ml_cat_id = ml_cat.id
             if (ml_cat_id):
-                print "category exists!" + str(ml_cat_id)
+                _logger.info("Categoria MELI con ID: %s ya existe!", ml_cat_id)
                 mlcatid = ml_cat_id
                 www_cat_id = ml_cat.public_category_id
             else:
-                print "Creating category: " + str(category_id)
+                _logger.info("Creando Categoria con ID: %s", category_id)
                 #https://api.mercadolibre.com/categories/MLA1743
                 response_cat = meli.get("/categories/"+str(category_id), {'access_token':meli.access_token})
                 rjson_cat = response_cat.json()
-                print "category:" + str(rjson_cat)
                 fullname = ""
                 if ("path_from_root" in rjson_cat):
                     path_from_root = rjson_cat["path_from_root"]
@@ -489,10 +488,10 @@ class ProductTemplate(models.Model):
             product.meli_price = int(product.list_price)
         errors = self.validate_fields_meli()
         if errors:
-            return warningobj.info(title='ERRORES AL SUBIR PUBLICACION', message="Por favor configure los siguientes campos.", message_html="".join(errors))
+            return warningobj.info(title='ERRORES AL SUBIR PUBLICACION', message="Por favor configure los siguientes campos en el producto: %s." % product.display_name, message_html="".join(errors))
         #publicando imagen cargada en OpenERP
         if not product.image:
-            return warningobj.info( title='MELI WARNING', message="Debe cargar una imagen de base en el producto.", message_html="" )
+            return warningobj.info( title='MELI WARNING', message="Debe cargar una imagen de base en el producto: %s." % product.display_name, message_html="" )
         elif not product.meli_imagen_id:
             # print "try uploading image..."
             resim = product.product_meli_upload_image()
@@ -642,7 +641,7 @@ class ProductTemplate(models.Model):
 
     @api.multi
     def get_price_for_category_predictor(self):
-        return self.meli_price
+        return int(self.meli_price)
     
     @api.multi
     def action_category_predictor(self):
@@ -694,7 +693,7 @@ class ProductTemplate(models.Model):
             if not template.meli_condition:
                 vals['meli_condition'] = 'new'
             if not template.meli_description:
-                vals['meli_description'] = template.get_description_sale()
+                vals['meli_description'] = template._get_description_sale()
             if not template.meli_category:
                 meli_category, json = template._get_meli_category_from_predictor()
                 if meli_category:
@@ -707,3 +706,16 @@ class ProductTemplate(models.Model):
     def _get_description_sale(self):
         self.ensure_one()
         return self.description_sale or ''
+
+    @api.model
+    def action_send_products_to_meli(self):
+        limit_meli = int(self.env['ir.config_parameter'].get_param('meli.product.limit', '1000').strip())
+        products = self.search([('website_published','=',True),
+                                ('meli_id','=',False),
+                                ], limit=limit_meli)
+        products.write({'meli_pub': True})
+        products.action_sincronice_product_data_ml()
+        for product in products:
+            product.product_post()
+        return True
+    
