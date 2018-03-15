@@ -551,12 +551,16 @@ class ProductTemplate(models.Model):
             for attribute in product_variant.attribute_value_ids:
                 if not attribute.attribute_id.meli_id:
                     continue
+                attribute_meli = False
                 #si el atributo no existe en la categoria no agregarlo xq no dejara hacer la publicacion
-                attribute_meli = self.meli_category.find_attribute(attribute.attribute_id.meli_id)
+                for attrib_meli_id in attribute.attribute_id.meli_id.split(','):
+                    attribute_meli = self.meli_category.find_attribute(attrib_meli_id)
+                    if attribute_meli:
+                        break
                 if not attribute_meli:
                     continue
                 attribute_combinations.append({
-                    'id': attribute.attribute_id.meli_id,
+                    'id': attribute_meli.code,
                     'value_name': attribute.name,
                 })
             if not attribute_combinations:
@@ -713,12 +717,14 @@ class ProductTemplate(models.Model):
     def action_sincronice_product_data_ml(self):
         #Completar los datos por un valor por defecto para los campos que esten vacios
         vals = {}
+        meli_listing_type = self.env['ir.config_parameter'].get_param('meli_listing_type', 'free').strip()
+        meli_condition = self.env['ir.config_parameter'].get_param('meli_condition', 'new').strip()
         for template in self:
             vals = {}
             if not template.meli_title:
                 vals['meli_title'] = template.name
             if not template.meli_listing_type:
-                vals['meli_listing_type'] = 'free'
+                vals['meli_listing_type'] = meli_listing_type
             #en modo libre solo se permite 1 cantidad de stock, cuando se use otra lista tomar el stock real
             vals['meli_available_quantity'] = 1
             if not template.meli_buying_mode:
@@ -728,7 +734,7 @@ class ProductTemplate(models.Model):
             if not template.meli_currency:
                 vals['meli_currency'] = 'CLP'
             if not template.meli_condition:
-                vals['meli_condition'] = 'new'
+                vals['meli_condition'] = meli_condition
             if not template.meli_description:
                 vals['meli_description'] = template._get_description_sale()
             if not template.meli_category:

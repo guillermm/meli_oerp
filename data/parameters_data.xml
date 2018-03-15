@@ -5,7 +5,17 @@
 		<record id="limit_meli_parameter" model="ir.config_parameter">
 			<field name="key">meli.product.limit</field>
 			<field name="value">1000</field>
-		</record>		
+		</record>
+		
+		<record id="meli_listing_type_parameter" model="ir.config_parameter">
+			<field name="key">meli_listing_type</field>
+			<field name="value">free</field>
+		</record>
+		
+		<record id="meli_condition_parameter" model="ir.config_parameter">
+			<field name="key">meli_condition</field>
+			<field name="value">new</field>
+		</record>
 
 	</data>
 </odoo>
