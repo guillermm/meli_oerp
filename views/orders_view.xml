@@ -67,6 +67,7 @@
 					<field name="nickname" />
 					<field name="email" />
 					<field name="phone" />
+					<field name="billing_info" />
 				</tree>
 			</field>
 		</record>
@@ -82,6 +83,7 @@
 								<field name="first_name" />
 								<field name="nickname" />
 								<field name="email" />
+								<field name="billing_info" />
 							</group>
 							<group>
 								<field name="last_name" />
