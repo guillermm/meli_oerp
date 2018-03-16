@@ -21,6 +21,7 @@
     'data': [
         'data/parameters_data.xml',
         'data/cron_jobs.xml',
+        'data/email_template_data.xml',
         'views/company_view.xml',
         'views/posting_view.xml',
         'views/product_post.xml',

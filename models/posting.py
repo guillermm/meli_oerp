@@ -74,6 +74,7 @@ class MercadolibrePosting(models.Model):
         meli_util_model = self.env['meli.util']
         #get with an item id
         posting = self
+        company = self.env.user.company_id
         log_msg = 'posting_query_questions: %s' % (posting.meli_id)
         _logger.info(log_msg)
         meli = meli_util_model.get_new_instance()
@@ -87,6 +88,8 @@ class MercadolibrePosting(models.Model):
             ML_permalink = product_json["permalink"]
             ML_price = product_json["price"]
             posting.write( { 'meli_status': ML_status, 'meli_permalink': ML_permalink, 'meli_price': ML_price } )
+        if (not company.mercadolibre_cron_get_questions):
+            return {}
         response = meli.get("/questions/search?item_id="+posting.meli_id, {'access_token':meli.access_token})
         questions_json = response.json()
         #_logger.info( questions_json )

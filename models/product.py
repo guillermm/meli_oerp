@@ -47,9 +47,8 @@ class ProductTemplate(models.Model):
     meli_imagen_id = fields.Char(string='Imagen Id', size=256)
     meli_post_required = fields.Boolean(string='Este producto es publicable en Mercado Libre')
     meli_id = fields.Char( string='Id del item asignado por Meli', size=256, copy=False)
-    meli_permalink = fields.Char(compute='product_get_permalink', size=256, string='PermaLink in MercadoLibre' )
     meli_title = fields.Char(string='Nombre del producto en Mercado Libre',size=256)
-    meli_description = fields.Html(string='Descripción')
+    meli_description = fields.Text(string='Descripción')
     meli_description_banner_id = fields.Many2one("mercadolibre.banner","Banner")
     meli_category = fields.Many2one("mercadolibre.category","Categoría de MercadoLibre")
     meli_listing_type = fields.Selection([("free","Libre"),("bronze","Bronce"),("silver","Plata"),("gold","Oro"),("gold_premium","Gold Premium"),("gold_special","Gold Special"),("gold_pro","Oro Pro")], string='Tipo de lista')
@@ -68,8 +67,9 @@ class ProductTemplate(models.Model):
     meli_imagen_link = fields.Char(string='Imagen Link', size=256)
     meli_multi_imagen_id = fields.Char(string='Multi Imagen Ids', size=512)
     meli_video = fields.Char( string='Video (id de youtube)', size=256)
-    meli_state = fields.Boolean(compute='product_get_meli_loginstate', string="Inicio de sesión requerida", store=False )
-    meli_status = fields.Char(compute='product_get_meli_status', size=128, string="Estado del producto en MLA", store=False )
+    meli_state = fields.Boolean(compute='product_get_meli_update', string="Inicio de sesión requerida", store=True)
+    meli_status = fields.Char(compute='product_get_meli_update', size=128, string="Estado del producto en ML", store=True)
+    meli_permalink = fields.Char(compute='product_get_meli_update', size=256, string='PermaLink in MercadoLibre', store=True)
     meli_dimensions = fields.Char( string="Dimensiones del producto", size=128)
     meli_pub = fields.Boolean('Meli Publication',help='MELI Product')
     ### Agregar imagen/archivo uno o mas, y la descripcion en HTML...
@@ -85,6 +85,7 @@ class ProductTemplate(models.Model):
         #pdb.set_trace()
         _logger.info("product_meli_get_product")
         _logger.info(self)
+        company = self.env.user.company_id
         meli = meli_util_model.get_new_instance()
         try:
             response = meli.get("/items/"+self.meli_id, {'access_token':meli.access_token})
@@ -156,21 +157,22 @@ class ProductTemplate(models.Model):
                     #pdb.set_trace()
                     for path in path_from_root:
                         fullname = fullname + "/" + path["name"]
-                        www_cats = self.env['product.public.category']
-                        if www_cats!=False:
-                            www_cat_id = www_cats.search([('name','=',path["name"])], limit=1).id
-                            if www_cat_id==False:
-                                www_cat_fields = {
-                                  'name': path["name"],
-                                  #'parent_id': p_id,
-                                  #'sequence': 1
-                                }
-                                if p_id:
-                                    www_cat_fields['parent_id'] = p_id
-                                www_cat_id = www_cats.create((www_cat_fields)).id
-                                if www_cat_id:
-                                    _logger.info("Website Category created:"+fullname)
-                            p_id = www_cat_id
+                        if (company.mercadolibre_create_website_categories):
+                            www_cats = self.env['product.public.category']
+                            if www_cats!=False:
+                                www_cat_id = www_cats.search([('name','=',path["name"])], limit=1).id
+                                if not www_cat_id:
+                                    www_cat_fields = {
+                                      'name': path["name"],
+                                      #'parent_id': p_id,
+                                      #'sequence': 1
+                                    }
+                                    if p_id:
+                                        www_cat_fields['parent_id'] = p_id
+                                    www_cat_id = www_cats.create((www_cat_fields)).id
+                                    if www_cat_id:
+                                        _logger.info("Website Category created:"+fullname)
+                                p_id = www_cat_id
                 #fullname = fullname + "/" + rjson_cat['name']
                 #print "category fullname:" + fullname
                 cat_fields = {
@@ -232,7 +234,10 @@ class ProductTemplate(models.Model):
         posting_fields = {'posting_date': str(datetime.now()),'meli_id':rjson['id'],'product_id':self.product_variant_ids[0].id,'name': 'Post (ML): ' + self.meli_title }
         posting_id = self.env['mercadolibre.posting'].search([('meli_id','=',rjson['id'])]).id
         if not posting_id:
-            posting_id = self.env['mercadolibre.posting'].create((posting_fields)).id
+            posting = self.env['mercadolibre.posting'].create((posting_fields))
+            posting_id = posting.id
+            if (posting):
+                posting.posting_query_questions()
         return {}
 
     def product_meli_login(self ):
@@ -248,36 +253,6 @@ class ProductTemplate(models.Model):
 	        "url": url_login_meli,
 	        "target": "new",
         }
-
-    @api.one
-    def product_get_meli_loginstate( self ):
-        meli_util_model = self.env['meli.util']
-        # recoger el estado y devolver True o False (meli)
-        #False if logged ok
-        #True if need login
-        self.ensure_one()
-        #pdb.set_trace()
-        company = self.env.user.company_id
-        ACCESS_TOKEN = company.mercadolibre_access_token
-        ML_state = False
-        if not ACCESS_TOKEN:
-            ML_state = True
-        else:
-            meli = meli_util_model.get_new_instance(company)
-            response = meli.get("/users/me", {'access_token':meli.access_token} )
-            rjson = response.json()
-            if 'error' in rjson:
-                if rjson['message']=='invalid_token' or rjson['message']=='expired_token':
-                    ACCESS_TOKEN = ''
-                    REFRESH_TOKEN = ''
-                    company.write({'mercadolibre_access_token': ACCESS_TOKEN, 'mercadolibre_refresh_token': REFRESH_TOKEN, 'mercadolibre_code': '' } )
-                    ML_state = True
-                    #raise osv.except_osv( _('MELI WARNING'), _('INVALID TOKEN (must login, go to Edit Company and login):  error: %s, message: %s, status: %s') % ( rjson["error"], rjson["message"],rjson["status"],))
-        self.meli_state = ML_state
-        #res = {}
-        #for company in self:#.browse(cr,uid,ids):
-        #    res[company.id] = ML_state
-        #return res
 
     def product_meli_status_close(self):
         meli_util_model = self.env['meli.util']
@@ -393,7 +368,7 @@ class ProductTemplate(models.Model):
         return { 'value': { 'meli_description' : result } }
 
     @api.multi
-    def product_get_meli_status( self ):
+    def product_get_meli_update(self):
         self.ensure_one()
         #pdb.set_trace()
         meli_util_model = self.env['meli.util']
@@ -401,45 +376,32 @@ class ProductTemplate(models.Model):
         product = self
         ACCESS_TOKEN = company.mercadolibre_access_token
         ML_status = "unknown"
+        ML_permalink = ""
+        ML_state = False
         if not ACCESS_TOKEN:
             ML_status = "unknown"
+            ML_permalink = ""
+            ML_state = True
         else:
             meli = meli_util_model.get_new_instance(company)
             if product.meli_id:
                 response = meli.get("/items/"+product.meli_id, {'access_token':meli.access_token} )
                 rjson = response.json()
-                ML_status = rjson["status"]
+                
+                rjson = response.json()
+                if "status" in rjson:
+                    ML_status = rjson["status"]
+                if "permalink" in rjson:
+                    ML_permalink = rjson["permalink"]
                 if "error" in rjson:
                     ML_status = rjson["error"]
+                    ML_permalink = ""
                 if "sub_status" in rjson:
                     if len(rjson["sub_status"]) and rjson["sub_status"][0]=='deleted':
                         product.write({ 'meli_id': '' })
         self.meli_status = ML_status
-
-    @api.one
-    def product_get_permalink( self ):
-        meli_util_model = self.env['meli.util']
-        #pdb.set_trace()
-        self.ensure_one()
-        company = self.env.user.company_id
-        product = self
-        ACCESS_TOKEN = company.mercadolibre_access_token
-        ML_permalink = ""
-        if not ACCESS_TOKEN:
-            ML_permalink = ""
-        else:
-            meli = meli_util_model.get_new_instance(company)
-            if product.meli_id:
-                response = meli.get("/items/"+product.meli_id, {'access_token':meli.access_token} )
-                rjson = response.json()
-                if "permalink" in rjson:
-                    ML_permalink = rjson["permalink"]
-                if "error" in rjson:
-                    ML_permalink = ""
-                #if "sub_status" in rjson:
-                    #if len(rjson["sub_status"]) and rjson["sub_status"][0]=='deleted':
-                    #    product.write({ 'meli_id': '' })
         self.meli_permalink = ML_permalink
+        self.meli_state = ML_state
         
     @api.multi
     def set_meli_fields_aditionals(self, vals):
@@ -524,12 +486,14 @@ class ProductTemplate(models.Model):
             qty_available = product.meli_available_quantity
         body = {
             "title": product.meli_title or '',
-            "description": product.meli_description or '',
+            "description": {
+                "plain_text": product.meli_description or '',
+            },
             "category_id": product.meli_category.meli_category_id or '0',
             "listing_type_id": product.meli_listing_type or '0',
             "buying_mode": product.meli_buying_mode or '',
             "price": product.meli_price  or '0',
-            "currency_id": product.meli_currency  or '0',
+            "currency_id": product.meli_currency  or 'CLP',
             "condition": product.meli_condition  or '',
             "available_quantity": max([qty_available, 1]),
             "warranty": product.meli_warranty or '',
@@ -541,6 +505,9 @@ class ProductTemplate(models.Model):
                "free_shipping": False,
                "free_methods": []
             }
+        }
+        bodydescription = {
+            "plain_text": product.meli_description or '',
         }
         #ID de COLOR = 83000
         #ID de TALLA = 73003
@@ -609,15 +576,6 @@ class ProductTemplate(models.Model):
                 body.setdefault('pictures', []).extend(multi_images_ids)
             if product.meli_imagen_logo:
                 body.setdefault('pictures', []).append({'source': product.meli_imagen_logo})
-        else:
-            if (product.meli_description!="" and product.meli_description!=False and product.meli_imagen_link!=""):
-                imgtag = "<img style='width: 420px; height: auto;' src='%s'/>" % ( product.meli_imagen_link )
-                result = product.meli_description.replace( "[IMAGEN_PRODUCTO]", imgtag )
-                if (result):
-                    _logger.info( "result: %s" % (result) )
-                    product.meli_description = result
-                else:
-                    result = product.meli_description
         #else:
         #    return warningobj.info(title='MELI WARNING', message="Debe completar el campo 'Imagen_Logo' con un url", message_html="")
 
@@ -633,6 +591,9 @@ class ProductTemplate(models.Model):
         _logger.info(body)
         if product.meli_id:
             response = meli.put("/items/"+product.meli_id, body, {'access_token':meli.access_token})
+            resdescription = meli.put("/items/"+product.meli_id+"/description", bodydescription, {'access_token':meli.access_token})
+            rjsondes = resdescription.json()
+            _logger.info(rjsondes)
         else:
             response = meli.post("/items", body, {'access_token':meli.access_token})
         #check response

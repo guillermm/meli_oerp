@@ -16,8 +16,10 @@ class ResCurrencyRate(models.Model):
     @api.model
     def update_prices(self):
         #import pdb;pdb.set_trace();
-        products = self.env['product.template'].search([])
-
+        products = self.env['product.template'].search([
+            ('meli_pub','=',True),
+            ('meli_id','!=',False),
+        ])
         pricelists = self.env['product.pricelist'].search([])
         #pricelist = pricelists[0]
         for pricelist in pricelists:
