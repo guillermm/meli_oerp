@@ -367,7 +367,7 @@ class ProductTemplate(models.Model):
                 result = banner.description
         return { 'value': { 'meli_description' : result } }
 
-    @api.multi
+    @api.one
     def product_get_meli_update(self):
         self.ensure_one()
         #pdb.set_trace()
@@ -378,7 +378,7 @@ class ProductTemplate(models.Model):
         ML_status = "unknown"
         ML_permalink = ""
         ML_state = False
-        if not ACCESS_TOKEN:
+        if not ACCESS_TOKEN or not product.meli_pub:
             ML_status = "unknown"
             ML_permalink = ""
             ML_state = True
