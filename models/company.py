@@ -24,6 +24,7 @@ import requests
 
 from odoo import fields, osv, models, api
 from odoo.tools.translate import _
+from odoo import tools
 
 from .meli_oerp_config import REDIRECT_URI
 
@@ -80,6 +81,12 @@ class ResCompany(models.Model):
             ML_state = True
             error_msg = 'MELI WARNING: NO INTERNET CONNECTION TO API.MERCADOLIBRE.COM: complete the Cliend Id, and Secret Key and try again '
             _logger.error(error_msg)
+        except Exception as ex:
+            #raise osv.except_osv( _('MELI WARNING'), _('NO INTERNET CONNECTION TO API.MERCADOLIBRE.COM: complete the Cliend Id, and Secret Key and try again'))
+            ML_state = True
+            error_msg = 'MELI WARNING: NO INTERNET CONNECTION TO API.MERCADOLIBRE.COM: complete the Cliend Id, Vendor ID and Secret Key and try again'
+            _logger.error(error_msg)
+            _logger.error(tools.ustr(ex))
 #        except requests.exceptions.HTTPError as e:
 #            print "And you get an HTTPError:", e.message
         if ML_state:
