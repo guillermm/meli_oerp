@@ -678,7 +678,7 @@ class ProductTemplate(models.Model):
     def action_sincronice_product_data_ml(self):
         #Completar los datos por un valor por defecto para los campos que esten vacios
         vals = {}
-        meli_listing_type = self.env['ir.config_parameter'].get_param('meli_listing_type', 'free').strip()
+        meli_listing_type = self.env['ir.config_parameter'].get_param('meli_listing_type', 'gold_special').strip()
         meli_condition = self.env['ir.config_parameter'].get_param('meli_condition', 'new').strip()
         for template in self:
             vals = {}

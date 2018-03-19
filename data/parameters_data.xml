@@ -9,7 +9,7 @@
 		
 		<record id="meli_listing_type_parameter" model="ir.config_parameter">
 			<field name="key">meli_listing_type</field>
-			<field name="value">free</field>
+			<field name="value">gold_special</field>
 		</record>
 		
 		<record id="meli_condition_parameter" model="ir.config_parameter">
