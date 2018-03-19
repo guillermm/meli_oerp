@@ -67,9 +67,9 @@ class ProductTemplate(models.Model):
     meli_imagen_link = fields.Char(string='Imagen Link', size=256)
     meli_multi_imagen_id = fields.Char(string='Multi Imagen Ids', size=512)
     meli_video = fields.Char( string='Video (id de youtube)', size=256)
-    meli_state = fields.Boolean(compute='product_get_meli_update', string="Inicio de sesión requerida", store=True)
-    meli_status = fields.Char(compute='product_get_meli_update', size=128, string="Estado del producto en ML", store=True)
-    meli_permalink = fields.Char(compute='product_get_meli_update', size=256, string='PermaLink in MercadoLibre', store=True)
+    meli_state = fields.Boolean(compute='product_get_meli_update', string="Inicio de sesión requerida", store=False)
+    meli_status = fields.Char(compute='product_get_meli_update', size=128, string="Estado del producto en ML", store=False)
+    meli_permalink = fields.Char(compute='product_get_meli_update', size=256, string='PermaLink in MercadoLibre', store=False)
     meli_dimensions = fields.Char( string="Dimensiones del producto", size=128)
     meli_pub = fields.Boolean('Meli Publication',help='MELI Product')
     ### Agregar imagen/archivo uno o mas, y la descripcion en HTML...
