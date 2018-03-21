@@ -19,6 +19,7 @@
 #
 ##############################################################################
 
+import re
 import json
 import logging
 
@@ -69,6 +70,10 @@ class ResPartner(models.Model):
     _inherit = "res.partner"
 
     meli_buyer_id = fields.Char('Meli Buyer Id')
+    
+    @api.model
+    def process_fields_meli(self, values, doc_type):
+        return values
 
 class mercadolibre_orders(models.Model):
     
@@ -174,6 +179,18 @@ class mercadolibre_orders(models.Model):
                 'last_name': Buyer['last_name'],
                 'billing_info': self.billing_info(Buyer['billing_info']),
             }
+            document_number =False
+            if Buyer['billing_info'].get('doc_number'):
+                document_number = Buyer['billing_info'].get('doc_number')
+                document_number = (re.sub('[^1234567890Kk]', '', str(document_number))).zfill(9).upper()
+                vat = 'CL%s' % document_number
+                document_number = '%s.%s.%s-%s' % (
+                    document_number[0:2], document_number[2:5],
+                    document_number[5:8], document_number[-1])
+                buyer_fields['document_number'] = document_number
+                meli_buyer_fields['document_number'] = document_number
+                meli_buyer_fields['vat'] = vat
+                meli_buyer_fields = respartner_obj.process_fields_meli(meli_buyer_fields, Buyer['billing_info'].get('doc_type') or 'RUT')
             buyer_ids = buyers_obj.search([  ('buyer_id','=',buyer_fields['buyer_id'] ) ] )
             buyer_id = 0
             if not buyer_ids:
@@ -185,8 +202,10 @@ class mercadolibre_orders(models.Model):
                 #if (len(buyer_ids)>0):
                 #      buyer_id = buyer_ids[0]
 
-            partner_ids = respartner_obj.search([  ('meli_buyer_id','=',buyer_fields['buyer_id'] ) ] )
+            partner_ids = respartner_obj.search([('meli_buyer_id', '=', buyer_fields['buyer_id'])])
             partner_id = 0
+            if not partner_ids and document_number:
+                partner_ids = respartner_obj.search([('document_number', '=', document_number)])
             if not partner_ids:
                 #print "creating partner:" + str(meli_buyer_fields)
                 partner_id = respartner_obj.create(( meli_buyer_fields ))
@@ -194,11 +213,12 @@ class mercadolibre_orders(models.Model):
                 partner_id = partner_ids
                 #if (len(partner_ids)>0):
                 #    partner_id = partner_ids[0]
-
+            if buyer_id and partner_id and not buyer_id.partner_id:
+                buyer_id.partner_id = partner_id
             if order:
                 return_id = order.write({'buyer':buyer_id.id})
             else:
-                partner_id.write( ( buyer_fields ) )
+                partner_id.write((meli_buyer_fields))
         if (len(partner_ids)>0):
             partner_id = partner_ids[0]
         #process base order fields
@@ -301,7 +321,7 @@ class mercadolibre_orders(models.Model):
 #                    'price_total': float(Item['unit_price']) * float(Item['quantity']),
                     'product_id': product_related_obj.id,
                     'product_uom_qty': Item['quantity'],
-                    'product_uom': 1,
+                    'product_uom': product_related_obj.uom_id.id,
                     'name': Item['item']['title'],
 #                    'customer_lead': float(0)
                 }
@@ -465,6 +485,8 @@ class MercadolibreBuyers(models.Model):
     first_name = fields.Char( string='First Name')
     last_name = fields.Char( string='Last Name')
     billing_info = fields.Char( string='Billing Info')
+    document_number = fields.Char(u'Numero de Documento')
+    partner_id = fields.Many2one('res.partner', u'Empresa')
     
     @api.multi
     def name_get(self):

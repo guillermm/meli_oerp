@@ -62,12 +62,13 @@
 			<field name="arch" type="xml">
 				<tree create="0" edit="0" delete="0">
 					<field name="buyer_id" />
+					<field name="partner_id" />
 					<field name="first_name" />
 					<field name="last_name" />
 					<field name="nickname" />
 					<field name="email" />
 					<field name="phone" />
-					<field name="billing_info" />
+					<field name="document_number" />
 				</tree>
 			</field>
 		</record>
@@ -82,8 +83,9 @@
 							<group>
 								<field name="first_name" />
 								<field name="nickname" />
+								<field name="partner_id" />
 								<field name="email" />
-								<field name="billing_info" />
+								<field name="document_number" />
 							</group>
 							<group>
 								<field name="last_name" />
