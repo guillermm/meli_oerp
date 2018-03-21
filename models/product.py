@@ -79,6 +79,11 @@ class ProductTemplate(models.Model):
     @api.onchange('list_price') # if these fields are changed, call method
     def check_change_price(self):
         self.meli_price = str(self.list_price)
+        
+    @api.multi
+    def get_product_image(self):
+        self.ensure_one()
+        return self.image
 
     def product_meli_get_product( self ):
         meli_util_model = self.env['meli.util']
@@ -297,11 +302,12 @@ class ProductTemplate(models.Model):
         warningobj = self.env['warning']
         meli = meli_util_model.get_new_instance()
         product = self
-        if not product.image:
+        product_image = product.get_product_image()
+        if not product_image:
             return warningobj.info( title='MELI WARNING', message="Debe cargar una imagen de base en el producto.", message_html="" )
         # print "product_meli_upload_image"
         #print "product_meli_upload_image: " + response.content
-        imagebin = base64.b64decode(product.image)
+        imagebin = base64.b64decode(product_image)
 #       print "data:image/png;base64,"+imageb64
 #       files = [ ('images', ('image_medium', imagebin, "image/png")) ]
         files = { 'file': ('image.jpg', imagebin, "image/jpeg"), }
@@ -464,7 +470,8 @@ class ProductTemplate(models.Model):
             message_list.append((message_text, message_description))
             return warningobj.info(title='ERRORES AL SUBIR PUBLICACION', message=message_text, message_html=message_description)
         #publicando imagen cargada en OpenERP
-        if not product.image:
+        product_image = product.get_product_image()
+        if not product_image:
             message_text = "Debe cargar una imagen de base en el producto: %s." % product.display_name
             message_description = ""
             message_list.append((message_text, message_description))
@@ -562,6 +569,9 @@ class ProductTemplate(models.Model):
                 #"pictures": [ { 'source': product.meli_imagen_logo} ] ,
                 "video_id": product.meli_video or '',
             }
+        #si la compañia tiene ID de tienda oficial, pasarla a los productos
+        if company.mercadolibre_official_store_id:
+            body['official_store_id'] = company.mercadolibre_official_store_id
         #publicando multiples imagenes
         multi_images_ids = {}
         if (product.product_image_ids):
