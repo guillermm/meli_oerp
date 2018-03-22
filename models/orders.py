@@ -24,6 +24,7 @@ import json
 import logging
 
 from odoo import fields, osv, models, api
+import odoo.addons.decimal_precision as dp
 
 _logger = logging.getLogger(__name__)
 
@@ -59,7 +60,25 @@ class SaleOrder(models.Model):
 #        'meli_order_items': fields.one2many('mercadolibre.order_items','order_id','Order Items' ),
 #        'meli_payments': fields.one2many('mercadolibre.payments','order_id','Payments' ),
     meli_shipping = fields.Text(string="Shipping")
-
+    shipping_id = fields.Char(u'ID de Entrega')
+    shipping_name = fields.Char(u'Metodo de Entrega')
+    shipping_method_id = fields.Char(u'ID de Metodo de Entrega')
+    shipping_cost = fields.Float(u'Costo de Entrega', digits=dp.get_precision('Account'))
+    shipping_status = fields.Selection([
+        ('handling','Pago Recibido/No Despachado'),
+        ('ready_to_ship','Listo para Entregar'),
+        ('shipped','Enviado'),
+        ('delivered','Entregado'),
+        ('not_delivered','No Entregado'),
+        ('cancelled','cancelled'),
+    ], string=u'Estado de Entrega', index=True, readonly=True)
+    shipping_substatus = fields.Selection([
+        ('printed','Etiqueta Impresa'),
+        ('printed','Etiqueta no Impresa'),
+    ], string=u'Estado de Impresion', index=True, readonly=True)
+    shipping_mode = fields.Selection([
+        ('me2','Mercado Envio'),
+    ], string=u'Metodo de envio', readonly=True)
     meli_total_amount = fields.Char(string='Total amount')
     meli_currency_id = fields.Char(string='Currency')
 #        'buyer': fields.many2one( "mercadolibre.buyers","Buyer"),
@@ -106,6 +125,26 @@ class mercadolibre_orders(models.Model):
 
     def pretty_json( self, ids, data, indent=0, context=None ):
         return json.dumps( data, sort_keys=False, indent=4 )
+    
+    @api.model
+    def prepare_values_shipping(self, meli_shipping_values):
+        shipping_values = {}
+        if 'id' in meli_shipping_values:
+            shipping_values['shipping_id'] = meli_shipping_values['id']
+        if 'shipping_option' in meli_shipping_values:
+            if 'name' in meli_shipping_values['shipping_option']:
+                shipping_values['shipping_name'] = meli_shipping_values['shipping_option']['name']
+            if 'shipping_method_id' in meli_shipping_values['shipping_option']:
+                shipping_values['shipping_method_id'] = meli_shipping_values['shipping_option']['shipping_method_id']
+        if 'cost' in meli_shipping_values:
+            shipping_values['shipping_cost'] = meli_shipping_values['cost']
+        if 'status' in meli_shipping_values:
+            shipping_values['shipping_status'] = meli_shipping_values['status']
+        if 'substatus' in meli_shipping_values:
+            shipping_values['shipping_substatus'] = meli_shipping_values['substatus']
+        if 'shipping_mode' in meli_shipping_values:
+            shipping_values['shipping_mode'] = meli_shipping_values['shipping_mode']
+        return shipping_values
 
     def orders_update_order_json( self, data, context=None ):
         _logger.info("orders_update_order_json > data: " + str(data) )
@@ -236,6 +275,9 @@ class mercadolibre_orders(models.Model):
         if (order_json["shipping"]):
             order_fields['shipping'] = self.pretty_json( id, order_json["shipping"] )
             meli_order_fields['meli_shipping'] = self.pretty_json( id, order_json["shipping"] )
+            shipping_values = self.prepare_values_shipping(order_json["shipping"])
+            order_fields.update(shipping_values)
+            meli_order_fields.update(shipping_values)
         #create or update order
         if (order and order.id):
             _logger.info("Updating order: %s" % (order.id))
@@ -419,6 +461,34 @@ class mercadolibre_orders(models.Model):
     def orders_query_recent( self ):
         self.orders_query_iterate( 0 )
         return {}
+    
+    @api.one
+    def get_tag_delivery(self):
+        self.ensure_one()
+        meli_util_model = self.env['meli.util']
+        company = self.env.user.company_id
+        meli = meli_util_model.get_new_instance(company)
+        params = {
+            'shipment_ids': self.shipping_id,
+            'response_type': 'pdf',
+            'access_token':meli.access_token,
+        }
+        orders_query = "/shipment_labels"
+        response = meli.get(orders_query, params)
+        return response.content
+        
+    @api.multi
+    def action_print_tag_delivery(self):
+        self.ensure_one()
+        return {'type': 'ir.actions.act_url',
+                'url': '/download/saveas?model=%(model)s&record_id=%(record_id)s&method=%(method)s&filename=%(filename)s' % {
+                    'filename': "Etiqueta de Envio %s.pdf" % (self.shipping_id),
+                    'model': self._name,
+                    'record_id': self.id,
+                    'method': 'get_tag_delivery',
+                },
+                'target': 'new',
+        }
 
     order_id = fields.Char('Order Id')
     status = fields.Selection( [
@@ -443,6 +513,25 @@ class mercadolibre_orders(models.Model):
     currency_id = fields.Char(string='Currency')
     buyer =  fields.Many2one( "mercadolibre.buyers","Buyer")
     seller = fields.Text( string='Seller' )
+    shipping_id = fields.Char(u'ID de Entrega')
+    shipping_name = fields.Char(u'Metodo de Entrega')
+    shipping_method_id = fields.Char(u'ID de Metodo de Entrega')
+    shipping_cost = fields.Float(u'Costo de Entrega', digits=dp.get_precision('Account'))
+    shipping_status = fields.Selection([
+        ('handling','Pago Recibido/No Despachado'),
+        ('ready_to_ship','Listo para Entregar'),
+        ('shipped','Enviado'),
+        ('delivered','Entregado'),
+        ('not_delivered','No Entregado'),
+        ('cancelled','cancelled'),
+    ], string=u'Estado de Entrega', index=True, readonly=True)
+    shipping_substatus = fields.Selection([
+        ('printed','Etiqueta Impresa'),
+        ('printed','Etiqueta no Impresa'),
+    ], string=u'Estado de Impresion', index=True, readonly=True)
+    shipping_mode = fields.Selection([
+        ('me2','Mercado Envio'),
+    ], string=u'Metodo de envio', readonly=True)
 
 class MercadolibreOrderItems(models.Model):
     

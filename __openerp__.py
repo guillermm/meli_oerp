@@ -17,6 +17,7 @@
         'base', 
         'product',
         'sale',
+        'laoo_utils',
     ],
     'data': [
         'data/parameters_data.xml',
