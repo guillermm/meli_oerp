@@ -73,8 +73,8 @@ class SaleOrder(models.Model):
         ('cancelled','cancelled'),
     ], string=u'Estado de Entrega', index=True, readonly=True)
     shipping_substatus = fields.Selection([
+        ('ready_to_print','Etiqueta no Impresa'),
         ('printed','Etiqueta Impresa'),
-        ('printed','Etiqueta no Impresa'),
     ], string=u'Estado de Impresion', index=True, readonly=True)
     shipping_mode = fields.Selection([
         ('me2','Mercado Envio'),
@@ -155,7 +155,7 @@ class mercadolibre_orders(models.Model):
         company = self.env.user.company_id
         saleorder_obj = self.env['sale.order']
         saleorderline_obj = self.env['sale.order.line']
-        product_obj = self.env['product.product']
+        product_obj = self.env['product.template']
         pricelist_obj = self.env['product.pricelist']
         respartner_obj = self.env['res.partner']
         plistids = pricelist_obj.search([
@@ -328,8 +328,28 @@ class mercadolibre_orders(models.Model):
                     #    post_related_obj = post_related[0]
                 else:
                     return {}
+                variants_names = ""
                 if len(product_related):
-                    product_related_obj = product_related
+                    product_related_obj = product_related.product_variant_ids[0]
+                    #si hay informacion de variantes, tomar la variante especifica que se haya vendido
+                    if Item['item'].get('variation_attributes'):
+                        all_atr_meli = set()
+                        all_atr_name_meli = set()
+                        for attr in Item['item'].get('variation_attributes'):
+                            all_atr_meli.add(attr['id'])
+                            all_atr_name_meli.add(attr['value_name'].lower())
+                        for product_variant in product_related.product_variant_ids:
+                            all_atr = set()
+                            all_atr_name = set()
+                            for attribute in product_variant.attribute_value_ids:
+                                if not attribute.attribute_id.meli_id:
+                                    continue
+                                all_atr.update(set(attribute.attribute_id.meli_id.split(',')))
+                                all_atr_name.add(attribute.name.lower())
+                            if all_atr_meli.intersection(all_atr) and all_atr_name_meli == all_atr_name:
+                                product_related_obj = product_variant
+                                variants_names = ", ".join(list(all_atr_name_meli))
+                                break
                     _logger.info( product_related_obj )
                     #if (product_related[0]):
                     #    product_related_obj_id = product_related[0]
@@ -342,7 +362,7 @@ class mercadolibre_orders(models.Model):
                     'order_id': order.id,
                     'posting_id': post_related_obj.id,
                     'order_item_id': Item['item']['id'],
-                    'order_item_title': Item['item']['title'],
+                    'order_item_title': "%s %s" % (Item['item']['title'], ("(%s)" % variants_names) if variants_names else ''),
                     'order_item_category_id': Item['item']['category_id'],
                     'unit_price': Item['unit_price'],
                     'quantity': Item['quantity'],
@@ -364,7 +384,7 @@ class mercadolibre_orders(models.Model):
                     'product_id': product_related_obj.id,
                     'product_uom_qty': Item['quantity'],
                     'product_uom': product_related_obj.uom_id.id,
-                    'name': Item['item']['title'],
+                    'name': "%s %s" % (Item['item']['title'], ("(%s)" % variants_names) if variants_names else ''),
 #                    'customer_lead': float(0)
                 }
                 saleorderline_item_ids = saleorderline_obj.search( [('meli_order_item_id','=',saleorderline_item_fields['meli_order_item_id']),('order_id','=',sorder.id)] )
@@ -480,6 +500,7 @@ class mercadolibre_orders(models.Model):
     @api.multi
     def action_print_tag_delivery(self):
         self.ensure_one()
+        self.shipping_substatus = 'printed'
         return {'type': 'ir.actions.act_url',
                 'url': '/download/saveas?model=%(model)s&record_id=%(record_id)s&method=%(method)s&filename=%(filename)s' % {
                     'filename': "Etiqueta de Envio %s.pdf" % (self.shipping_id),
@@ -526,8 +547,8 @@ class mercadolibre_orders(models.Model):
         ('cancelled','cancelled'),
     ], string=u'Estado de Entrega', index=True, readonly=True)
     shipping_substatus = fields.Selection([
+        ('ready_to_print','Etiqueta no Impresa'),
         ('printed','Etiqueta Impresa'),
-        ('printed','Etiqueta no Impresa'),
     ], string=u'Estado de Impresion', index=True, readonly=True)
     shipping_mode = fields.Selection([
         ('me2','Mercado Envio'),

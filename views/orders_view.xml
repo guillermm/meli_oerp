@@ -123,7 +123,10 @@
 					<header>
 						<button name="action_print_tag_delivery" string="Imprimir Etiqueta de despacho" 
 							type="object" class="oe_highlight"
-							attrs="{'invisible': ['|', ('shipping_status','!=','ready_to_ship'), ('shipping_id','=',False)]}"/>
+							attrs="{'invisible': ['|', '|', ('shipping_status','!=','ready_to_ship'), ('shipping_id','=',False), ('shipping_substatus','!=','ready_to_print')]}"/>
+						<button name="action_print_tag_delivery" string="ReImprimir Etiqueta de despacho" 
+							type="object"
+							attrs="{'invisible': ['|', '|', ('shipping_status','!=','ready_to_ship'), ('shipping_id','=',False), ('shipping_substatus','!=','printed')]}"/>
 					</header>
 					<sheet>
 						<group>
@@ -177,6 +180,7 @@
 			<field name="arch" type="xml">
 				<tree create="0" edit="0" delete="0">
 					<field name="posting_id" />
+					<field name="order_item_title" />
 					<field name="order_id" />
 					<field name="order_item_id" />
 					<field name="unit_price" />
