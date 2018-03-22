@@ -96,6 +96,13 @@ class Meli(object):
 
         response = self._requests.post(uri, data=body, params=urlencode(params), headers=headers)
         return response
+    
+    def upload(self, path, files, params={}):
+        #headers = {'Accept': 'application/json', 'User-Agent':self.SDK_VERSION, 'Content-type':'multipart/form-data'}
+        headers = {}
+        uri = self.make_path(path)
+        response = self._requests.post(uri, files=files, params=urlencode(params), headers=headers)
+        return response
 
     def put(self, path, body=None, params={}):
         headers = {'Accept': 'application/json', 'User-Agent':self.SDK_VERSION, 'Content-type':'application/json'}
