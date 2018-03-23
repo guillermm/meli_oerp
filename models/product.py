@@ -560,10 +560,8 @@ class ProductTemplate(models.Model):
                 #"category_id": product.meli_category.meli_category_id,
                 #"listing_type_id": product.meli_listing_type,
                 "buying_mode": product.meli_buying_mode or '',
-                "price": product.meli_price or '0',
                 #"currency_id": product.meli_currency,
                 "condition": product.meli_condition or '',
-                "available_quantity": max([qty_available, 1]),
                 "warranty": product.meli_warranty or '',
                 "pictures": [],
                 #"pictures": [ { 'source': product.meli_imagen_logo} ] ,
@@ -648,6 +646,10 @@ class ProductTemplate(models.Model):
         return {}
     
     @api.multi
+    def get_title_for_meli(self):
+        return self.name
+    
+    @api.multi
     def get_title_for_category_predictor(self):
         return self.name
 
@@ -693,7 +695,7 @@ class ProductTemplate(models.Model):
         for template in self:
             vals = {}
             if not template.meli_title:
-                vals['meli_title'] = template.name
+                vals['meli_title'] = template.get_title_for_meli()
             if not template.meli_listing_type:
                 vals['meli_listing_type'] = meli_listing_type
             #en modo libre solo se permite 1 cantidad de stock, cuando se use otra lista tomar el stock real
