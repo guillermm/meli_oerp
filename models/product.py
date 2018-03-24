@@ -488,6 +488,12 @@ class ProductTemplate(models.Model):
                     message_description = ""
                     message_list.append((message_text, message_description))
                     _logger.error(error_msg)
+        #publicando multiples imagenes
+        multi_images_ids = {}
+        if (product.product_image_ids):
+            # print 'website_multi_images presente:   ', product.images
+            #recorrer las imagenes y publicarlas
+            multi_images_ids = product.product_meli_upload_multi_images()
         qty_available = product.qty_available
         if product.meli_available_quantity:
             qty_available = product.meli_available_quantity
@@ -545,7 +551,11 @@ class ProductTemplate(models.Model):
             variation_data['available_quantity'] = max([qty_available, 1]) 
             variation_data['price'] = product_variant.lst_price
             variation_data['attribute_combinations'] = attribute_combinations
-            variation_data.setdefault('picture_ids', []).append(self.meli_imagen_id)
+            if self.meli_imagen_id:
+                variation_data.setdefault('picture_ids', []).append(self.meli_imagen_id)
+            if (multi_images_ids):
+                for img in multi_images_ids:
+                    variation_data.setdefault('picture_ids', []).append(img['id'])
             variations.append(variation_data)
         body['variations'] = variations
         body = self.set_meli_fields_aditionals(body)
@@ -570,12 +580,6 @@ class ProductTemplate(models.Model):
         #si la compañia tiene ID de tienda oficial, pasarla a los productos
         if company.mercadolibre_official_store_id:
             body['official_store_id'] = company.mercadolibre_official_store_id
-        #publicando multiples imagenes
-        multi_images_ids = {}
-        if (product.product_image_ids):
-            # print 'website_multi_images presente:   ', product.images
-            #recorrer las imagenes y publicarlas
-            multi_images_ids = product.product_meli_upload_multi_images()
         #asignando imagen de logo (por source)
         #if product.meli_imagen_logo:
         if product.meli_imagen_id:
