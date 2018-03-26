@@ -340,6 +340,10 @@ class ProductTemplate(models.Model):
         #loop over images
         for product_image in product.product_image_ids:
             if (product_image.image):
+                if product_image.meli_id:
+                    image_ids+= [{'id': product_image.meli_id}]
+                    _logger.info("Imagen ya tenia ID de MELI, se usara ese ID: %s", product_image.meli_id)
+                    continue
                 imagebin = base64.b64decode( product_image.image )
                 #files = { 'file': ('image.png', imagebin, "image/png"), }
                 files = { 'file': ('image.jpg', imagebin, "image/jpeg"), }
@@ -350,6 +354,7 @@ class ProductTemplate(models.Model):
                     raise UserError(_('No se pudo cargar la imagen en MELI! Error: %s , Mensaje: %s, Status: %s') % ( rjson["error"], rjson["message"],rjson["status"],))
                     #return { 'status': 'error', 'message': 'not uploaded'}
                 else:
+                    product_image.write({'meli_id': rjson['id']})
                     image_ids+= [ { 'id': rjson['id'] }]
                     c = c + 1
                     print "image_ids:" + str(image_ids)
@@ -528,6 +533,7 @@ class ProductTemplate(models.Model):
         for product_variant in self.product_variant_ids:
             variation_data = {}
             attribute_combinations = []
+            atribute_values = []
             for attribute in product_variant.attribute_value_ids:
                 if not attribute.attribute_id.meli_id:
                     continue
@@ -539,6 +545,7 @@ class ProductTemplate(models.Model):
                         break
                 if not attribute_meli:
                     continue
+                atribute_values.append(attribute.id)
                 attribute_combinations.append({
                     'id': attribute_meli.code,
                     'value_name': attribute.name,
@@ -551,11 +558,7 @@ class ProductTemplate(models.Model):
             variation_data['available_quantity'] = max([qty_available, 1]) 
             variation_data['price'] = product_variant.lst_price
             variation_data['attribute_combinations'] = attribute_combinations
-            if self.meli_imagen_id:
-                variation_data.setdefault('picture_ids', []).append(self.meli_imagen_id)
-            if (multi_images_ids):
-                for img in multi_images_ids:
-                    variation_data.setdefault('picture_ids', []).append(img['id'])
+            variation_data['picture_ids'] = self._get_meli_image_variants(atribute_values)
             variations.append(variation_data)
         body['variations'] = variations
         body = self.set_meli_fields_aditionals(body)
@@ -726,6 +729,21 @@ class ProductTemplate(models.Model):
     def _get_description_sale(self):
         self.ensure_one()
         return self.description_sale or ''
+    
+    @api.multi
+    def _get_meli_image_variants(self, atribute_values):
+        picture_ids = []
+        if not atribute_values and self.meli_imagen_id:
+            picture_ids.append(self.meli_imagen_id)
+        for product_image in self.product_image_ids:
+            if not product_image.meli_id:
+                continue
+            if atribute_values and product_image.product_attribute_id:
+                if product_image.product_attribute_id.id in atribute_values:
+                    picture_ids.append(product_image.meli_id)
+            else:
+                picture_ids.append(product_image.meli_id)
+        return picture_ids
 
     @api.model
     def action_send_products_to_meli(self):

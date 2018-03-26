@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+	<data>
+		<record id="product_image_form_view" model="ir.ui.view">
+			<field name="name">product.image.form</field>
+			<field name="model">product.image</field>
+			<field name="inherit_id" ref="website_sale.view_product_image_form" />
+			<field name="arch" type="xml">
+				<xpath expr="//field[@name='product_tmpl_id']/.." position="after">
+					<group>
+						<field name="product_attribute_id" context="{'product_tmpl_to_filter': product_tmpl_id}"
+							options="{'no_create': True}" />
+						<field name="meli_id" placeholder="ID MELI" readonly="1" />
+					</group>
+				</xpath>
+			</field>
+		</record>
+
+	</data>
+</odoo>

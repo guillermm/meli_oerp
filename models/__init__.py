@@ -10,6 +10,7 @@ import warning
 import company
 import meli_util
 import product_attribute
+import product_image
 import product
 import category
 import banner
