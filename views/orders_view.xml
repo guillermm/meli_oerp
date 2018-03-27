@@ -2,16 +2,25 @@
 <odoo>
 	<data>
 
-		<record model="ir.ui.view" id="view_meli_orders_tree">
-			<field name="name">mercadolibre.orders.tree</field>
-			<field name="model">mercadolibre.orders</field>
+		<record id="sale_order_quotation_tree_view" model="ir.ui.view">
+			<field name="name">sale.order.tree</field>
+			<field name="model">sale.order</field>
+			<field name="inherit_id" ref="sale.view_quotation_tree" />
 			<field name="arch" type="xml">
-				<tree create="0" edit="0" delete="0">
-					<field name="order_id" />
-					<field name="status" />
-					<field name="date_created" />
-					<field name="date_closed" />
-				</tree>
+				<field name="name" position="after">
+					<field name="meli_order_id" />
+				</field>
+			</field>
+		</record>
+
+		<record id="sale_order_tree_view" model="ir.ui.view">
+			<field name="name">sale.order.tree</field>
+			<field name="model">sale.order</field>
+			<field name="inherit_id" ref="sale.view_order_tree" />
+			<field name="arch" type="xml">
+				<field name="name" position="after">
+					<field name="meli_order_id" />
+				</field>
 			</field>
 		</record>
 
@@ -24,7 +33,7 @@
 					<page string="MercadoLibre">
 						<group>
 							<group>
-								<field name="meli_order_id" />
+								<field name="meli_order_id" options="{'no_create': True}" />
 								<field name="meli_status_detail" />
 								<field name="meli_date_created" />
 								<field name="meli_currency_id" />
@@ -37,7 +46,8 @@
 						</group>
 						<group string="Informacion de Envio" colspan="2">
 							<header colspan="2">
-								<field name="shipping_status" widget="statusbar" statusbar_visible="ready_to_ship,shipped,delivered"/>
+								<field name="shipping_status" widget="statusbar"
+									statusbar_visible="ready_to_ship,shipped,delivered" />
 							</header>
 							<group colspan="2">
 								<group>
@@ -54,6 +64,17 @@
 						</group>
 					</page>
 				</xpath>
+			</field>
+		</record>
+
+		<record id="sale_order_search_view" model="ir.ui.view">
+			<field name="name">sale.order.search</field>
+			<field name="model">sale.order</field>
+			<field name="inherit_id" ref="sale.view_sales_order_filter" />
+			<field name="arch" type="xml">
+				<field name="name" position="after">
+					<field name="meli_order_id" />
+				</field>
 			</field>
 		</record>
 
@@ -115,24 +136,39 @@
 			</field>
 		</record>
 
+		<record model="ir.ui.view" id="view_meli_orders_tree">
+			<field name="name">mercadolibre.orders.tree</field>
+			<field name="model">mercadolibre.orders</field>
+			<field name="arch" type="xml">
+				<tree create="0" edit="0" delete="0">
+					<field name="order_id" />
+					<field name="sale_order_id" />
+					<field name="status" />
+					<field name="date_created" />
+					<field name="date_closed" />
+				</tree>
+			</field>
+		</record>
+
 		<record model="ir.ui.view" id="view_meli_orders_form">
 			<field name="name">mercadolibre.orders.form</field>
 			<field name="model">mercadolibre.orders</field>
 			<field name="arch" type="xml">
 				<form create="0" edit="0" delete="0">
 					<header>
-						<button name="action_print_tag_delivery" string="Imprimir Etiqueta de despacho" 
+						<button name="action_print_tag_delivery" string="Imprimir Etiqueta de despacho"
 							type="object" class="oe_highlight"
-							attrs="{'invisible': ['|', '|', ('shipping_status','!=','ready_to_ship'), ('shipping_id','=',False), ('shipping_substatus','!=','ready_to_print')]}"/>
-						<button name="action_print_tag_delivery" string="ReImprimir Etiqueta de despacho" 
+							attrs="{'invisible': ['|', '|', ('shipping_status','!=','ready_to_ship'), ('shipping_id','=',False), ('shipping_substatus','!=','ready_to_print')]}" />
+						<button name="action_print_tag_delivery" string="ReImprimir Etiqueta de despacho"
 							type="object"
-							attrs="{'invisible': ['|', '|', ('shipping_status','!=','ready_to_ship'), ('shipping_id','=',False), ('shipping_substatus','!=','printed')]}"/>
+							attrs="{'invisible': ['|', '|', ('shipping_status','!=','ready_to_ship'), ('shipping_id','=',False), ('shipping_substatus','!=','printed')]}" />
 					</header>
 					<sheet>
 						<group>
 							<group>
 								<field name="seller" />
 								<field name="order_id" />
+								<field name="sale_order_id" options="{'no_create': True}" />
 								<field name="status_detail" />
 								<field name="buyer" />
 							</group>
@@ -153,7 +189,8 @@
 							</page>
 							<page string="Informacion de Envio">
 								<header>
-									<field name="shipping_status" widget="statusbar" statusbar_visible="ready_to_ship,shipped,delivered"/>
+									<field name="shipping_status" widget="statusbar"
+										statusbar_visible="ready_to_ship,shipped,delivered" />
 								</header>
 								<group>
 									<group>
@@ -171,6 +208,21 @@
 						</notebook>
 					</sheet>
 				</form>
+			</field>
+		</record>
+
+		<record id="meli_orders_search_view" model="ir.ui.view">
+			<field name="name">MercadoLibre Orders - Search</field>
+			<field name="model">mercadolibre.orders</field>
+			<field name="arch" type="xml">
+				<search>
+					<field name="order_id" />
+					<field name="sale_order_id" />
+					<field name="date_created" />
+					<field name="date_closed" />
+					<filter string='Status' icon="terp-mrp" domain="[]"
+						context="{'group_by' : 'status'}" />
+				</search>
 			</field>
 		</record>
 
@@ -201,18 +253,6 @@
 					<field name="date_created" />
 					<field name="date_last_modified" />
 				</tree>
-			</field>
-		</record>
-
-
-		<record id="meli_orders_search_view" model="ir.ui.view">
-			<field name="name">MercadoLibre Orders - Search</field>
-			<field name="model">mercadolibre.orders</field>
-			<field name="arch" type="xml">
-				<search>
-					<filter string='Status' icon="terp-mrp" domain="[]"
-						context="{'group_by' : 'status'}" />
-				</search>
 			</field>
 		</record>
 

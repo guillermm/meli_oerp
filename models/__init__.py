@@ -19,5 +19,6 @@ import posting
 import product_post
 import questions
 import orders
+import sale_order
 import currency
 
