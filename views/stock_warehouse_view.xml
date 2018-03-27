@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+	<data>
+		<record id="stock_warehouse_form_view" model="ir.ui.view">
+			<field name="name">stock.warehouse.form</field>
+			<field name="model">stock.warehouse</field>
+			<field name="inherit_id" ref="stock.view_warehouse" />
+			<field name="arch" type="xml">
+				<div name="button_box" position="inside">
+					<button class="oe_stat_button" name="meli_publish_button"
+						type="object" icon="fa-globe">
+						<field name="meli_published" widget="boolean_button"
+							options="{'terminology': {'string_false': 'MELI NO publicado', 'hover_false': 'MELI Publicar', 'string_true': 'MELI Publicado', 'hover_true': 'MELI NO publicar'}}" />
+					</button>
+				</div>
+			</field>
+		</record>
+
+	</data>
+</odoo>

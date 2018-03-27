@@ -30,6 +30,7 @@
         'views/product_attribute_view.xml',
         'views/product_image_view.xml',
         'views/product_view.xml',	
+        'views/stock_warehouse_view.xml',
         'views/category_view.xml',
         'views/banner_view.xml',
         'views/warning_view.xml',

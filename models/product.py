@@ -767,16 +767,26 @@ class ProductTemplate(models.Model):
     
     @api.multi
     def _get_meli_quantity_available(self):
-        qty_available = self.qty_available
-        if self.meli_available_quantity:
+        qty_available = 0
+        warehouse_website = self.env['stock.warehouse'].sudo().search([('meli_published','=',True)])
+        if not warehouse_website:
             qty_available = self.meli_available_quantity
+            return qty_available 
+        for ware in warehouse_website:
+            stock_data = self.with_context(warehouse=ware.id)._compute_quantities_dict()
+            qty_available += stock_data.get(self.id).get('qty_available')
         return qty_available
     
     @api.model
     def _get_meli_quantity_available_variant(self, variant):
-        qty_available = variant.qty_available
-        if self.meli_available_quantity:
+        qty_available = 0
+        warehouse_website = self.env['stock.warehouse'].sudo().search([('meli_published','=',True)])
+        if not warehouse_website:
             qty_available = self.meli_available_quantity
+            return qty_available
+        for ware in warehouse_website:
+            stock_data = variant.with_context(warehouse=ware.id)._compute_quantities_dict(lot_id=False, owner_id=False, package_id=False)
+            qty_available += stock_data.get(variant.id).get('qty_available')
         return qty_available
     
     @api.multi
