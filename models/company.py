@@ -106,7 +106,11 @@ class ResCompany(models.Model):
                 self.env['mail.template'].browse(
                     company.mercadolibre_cron_mail.id
                 ).with_context(context).sudo().send_mail( (company.id), force_send=True)
-        self.mercadolibre_state = ML_state
+        #FIX: esta funcion es de un campo calculado
+        #pero erroneamente se usa en una tarea cron, por lo que no se pasa el recordset sino vario
+        #asi que verificar que exxista algo para hacer el write
+        if self:
+            self.mercadolibre_state = ML_state
 
     mercadolibre_client_id = fields.Char(string='Client ID para ingresar a MercadoLibre',size=128)
     mercadolibre_secret_key = fields.Char(string='Secret Key para ingresar a MercadoLibre',size=128)

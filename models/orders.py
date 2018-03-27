@@ -181,7 +181,7 @@ class mercadolibre_orders(models.Model):
             buyer_id = 0
             if not buyer_ids:
                 print "creating buyer:" + str(buyer_fields)
-                buyer_id = buyers_obj.create(( buyer_fields ))
+                buyer_id = buyers_obj.create(buyer_fields)
             else:
                 if (buyer_ids):
                     buyer_id = buyer_ids
@@ -194,17 +194,15 @@ class mercadolibre_orders(models.Model):
                 partner_ids = respartner_obj.search([('document_number', '=', document_number)])
             if not partner_ids:
                 #print "creating partner:" + str(meli_buyer_fields)
-                partner_id = respartner_obj.create(( meli_buyer_fields ))
+                partner_id = respartner_obj.create(meli_buyer_fields)
             else:
                 partner_id = partner_ids
                 #if (len(partner_ids)>0):
                 #    partner_id = partner_ids[0]
             if buyer_id and partner_id and not buyer_id.partner_id:
                 buyer_id.partner_id = partner_id
-            if order:
-                return_id = order.write({'buyer':buyer_id.id})
-            else:
-                partner_id.write((meli_buyer_fields))
+            if buyer_id:
+                order_fields['buyer'] = buyer_id.id
         if (len(partner_ids)>0):
             partner_id = partner_ids[0]
         #process base order fields
@@ -275,7 +273,9 @@ class mercadolibre_orders(models.Model):
                     #if (post_related[0]):
                     #    post_related_obj = post_related[0]
                 else:
-                    return {}
+                    notes.append("*Producto: %s con ID: %s no existe" % (Item['item']['title'], Item['item']['id']))
+                    need_review = True
+                    continue
                 variants_names = ""
                 if len(product_related):
                     product_related_obj = product_related.product_variant_ids[0]
@@ -504,6 +504,7 @@ class mercadolibre_orders(models.Model):
     shipping_method_id = fields.Char(u'ID de Metodo de Entrega')
     shipping_cost = fields.Float(u'Costo de Entrega', digits=dp.get_precision('Account'))
     shipping_status = fields.Selection([
+        ('to_be_agreed', 'A Convenir(Acuerdo entre comprador y vendedor)'),
         ('handling','Pago Recibido/No Despachado'),
         ('ready_to_ship','Listo para Entregar'),
         ('shipped','Enviado'),
