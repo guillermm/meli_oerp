@@ -8,6 +8,7 @@
 
 import warning
 import company
+import res_partner
 import meli_util
 import product_attribute
 import product_image

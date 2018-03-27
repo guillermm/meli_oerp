@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+	<data>
+
+		<record id="sale_order_quotation_tree_view" model="ir.ui.view">
+			<field name="name">sale.order.tree</field>
+			<field name="model">sale.order</field>
+			<field name="inherit_id" ref="sale.view_quotation_tree" />
+			<field name="arch" type="xml">
+				<field name="name" position="after">
+					<field name="meli_order_id" />
+				</field>
+			</field>
+		</record>
+
+		<record id="sale_order_tree_view" model="ir.ui.view">
+			<field name="name">sale.order.tree</field>
+			<field name="model">sale.order</field>
+			<field name="inherit_id" ref="sale.view_order_tree" />
+			<field name="arch" type="xml">
+				<field name="name" position="after">
+					<field name="meli_order_id" />
+				</field>
+			</field>
+		</record>
+
+		<record model="ir.ui.view" id="view_sale_order_form_meli">
+			<field name="name">sale.order.form.meli</field>
+			<field name="model">sale.order</field>
+			<field name="inherit_id" ref="sale.view_order_form" />
+			<field name="arch" type="xml">
+				<xpath expr="//notebook" position="inside">
+					<page string="MercadoLibre">
+						<group>
+							<group>
+								<field name="meli_order_id" options="{'no_create': True}" />
+								<field name="meli_status_detail" />
+								<field name="meli_date_created" />
+								<field name="meli_currency_id" />
+							</group>
+							<group>
+								<field name="meli_status" />
+								<field name="meli_total_amount" />
+								<field name="meli_date_closed" />
+							</group>
+						</group>
+						<group string="Informacion de Envio" colspan="2">
+							<header colspan="2">
+								<field name="shipping_status" widget="statusbar"
+									statusbar_visible="ready_to_ship,shipped,delivered" />
+							</header>
+							<group colspan="2">
+								<group>
+									<field name="shipping_id" />
+									<field name="shipping_name" />
+									<field name="shipping_method_id" />
+								</group>
+								<group>
+									<field name="shipping_cost" />
+									<field name="shipping_mode" />
+									<field name="shipping_substatus" />
+								</group>
+							</group>
+						</group>
+					</page>
+				</xpath>
+			</field>
+		</record>
+
+		<record id="sale_order_search_view" model="ir.ui.view">
+			<field name="name">sale.order.search</field>
+			<field name="model">sale.order</field>
+			<field name="inherit_id" ref="sale.view_sales_order_filter" />
+			<field name="arch" type="xml">
+				<field name="name" position="after">
+					<field name="meli_order_id" />
+				</field>
+			</field>
+		</record>
+
+	</data>
+</odoo>

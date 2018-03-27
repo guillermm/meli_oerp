@@ -30,21 +30,60 @@ _logger = logging.getLogger(__name__)
 
 #https://api.mercadolibre.com/questions/search?item_id=MLA508223205
 
-class ResPartner(models.Model):
-    
-    _inherit = "res.partner"
-
-    meli_buyer_id = fields.Char('Meli Buyer Id')
-    
-    @api.model
-    def process_fields_meli(self, values, doc_type):
-        return values
-
 class mercadolibre_orders(models.Model):
     
     _name = "mercadolibre.orders"
     _description = "Pedidos en MercadoLibre"
     _rec_name = 'order_id'
+    
+    order_id = fields.Char('Order Id')
+    sale_order_id = fields.Many2one('sale.order', u'Pedido de Venta',
+        copy=False, readonly=True)
+    status = fields.Selection( [
+        #Initial state of an order, and it has no payment yet.
+                                        ("confirmed","Confirmado"),
+        #The order needs a payment to become confirmed and show users information.
+                                      ("payment_required","Pago requerido"),
+        #There is a payment related with the order, but it has not accredited yet
+                                    ("payment_in_process","Pago en proceso"),
+        #The order has a related payment and it has been accredited.
+                                    ("paid","Pagado"),
+        #The order has not completed by some reason.
+                                    ("cancelled","Cancelado")], string='Order Status')
+
+    status_detail = fields.Text(string='Status detail, in case the order was cancelled.')
+    date_created = fields.Date('Creation date')
+    date_closed = fields.Date('Closing date')
+    order_items = fields.One2many('mercadolibre.order_items','order_id','Order Items' )
+    payments = fields.One2many('mercadolibre.payments','order_id','Payments' )
+    shipping = fields.Text(string="Shipping")
+    total_amount = fields.Char(string='Total amount')
+    currency_id = fields.Char(string='Currency')
+    buyer =  fields.Many2one( "mercadolibre.buyers","Buyer")
+    seller = fields.Text( string='Seller' )
+    shipping_id = fields.Char(u'ID de Entrega')
+    shipping_name = fields.Char(u'Metodo de Entrega')
+    shipping_method_id = fields.Char(u'ID de Metodo de Entrega')
+    shipping_cost = fields.Float(u'Costo de Entrega', digits=dp.get_precision('Account'))
+    shipping_status = fields.Selection([
+        ('to_be_agreed', 'A Convenir(Acuerdo entre comprador y vendedor)'),
+        ('pending','Pendiente'),
+        ('handling','Pago Recibido/No Despachado'),
+        ('ready_to_ship','Listo para Entregar'),
+        ('shipped','Enviado'),
+        ('delivered','Entregado'),
+        ('not_delivered','No Entregado'),
+        ('cancelled','cancelled'),
+    ], string=u'Estado de Entrega', index=True, readonly=True)
+    shipping_substatus = fields.Selection([
+        ('ready_to_print','Etiqueta no Impresa'),
+        ('printed','Etiqueta Impresa'),
+    ], string=u'Estado de Impresion', index=True, readonly=True)
+    shipping_mode = fields.Selection([
+        ('me2','Mercado Envio'),
+    ], string=u'Metodo de envio', readonly=True)
+    note = fields.Html(u'Notas', readonly=True, copy=False)
+    need_review = fields.Boolean(u'Necesita Revision?', readonly=True, copy=False)
 
     def billing_info( self, billing_json, context=None ):
         billinginfo = ''
@@ -473,54 +512,6 @@ class mercadolibre_orders(models.Model):
                 },
                 'target': 'new',
         }
-
-    order_id = fields.Char('Order Id')
-    sale_order_id = fields.Many2one('sale.order', u'Pedido de Venta',
-        copy=False, readonly=True)
-    status = fields.Selection( [
-        #Initial state of an order, and it has no payment yet.
-                                        ("confirmed","Confirmado"),
-        #The order needs a payment to become confirmed and show users information.
-                                      ("payment_required","Pago requerido"),
-        #There is a payment related with the order, but it has not accredited yet
-                                    ("payment_in_process","Pago en proceso"),
-        #The order has a related payment and it has been accredited.
-                                    ("paid","Pagado"),
-        #The order has not completed by some reason.
-                                    ("cancelled","Cancelado")], string='Order Status')
-
-    status_detail = fields.Text(string='Status detail, in case the order was cancelled.')
-    date_created = fields.Date('Creation date')
-    date_closed = fields.Date('Closing date')
-    order_items = fields.One2many('mercadolibre.order_items','order_id','Order Items' )
-    payments = fields.One2many('mercadolibre.payments','order_id','Payments' )
-    shipping = fields.Text(string="Shipping")
-    total_amount = fields.Char(string='Total amount')
-    currency_id = fields.Char(string='Currency')
-    buyer =  fields.Many2one( "mercadolibre.buyers","Buyer")
-    seller = fields.Text( string='Seller' )
-    shipping_id = fields.Char(u'ID de Entrega')
-    shipping_name = fields.Char(u'Metodo de Entrega')
-    shipping_method_id = fields.Char(u'ID de Metodo de Entrega')
-    shipping_cost = fields.Float(u'Costo de Entrega', digits=dp.get_precision('Account'))
-    shipping_status = fields.Selection([
-        ('to_be_agreed', 'A Convenir(Acuerdo entre comprador y vendedor)'),
-        ('handling','Pago Recibido/No Despachado'),
-        ('ready_to_ship','Listo para Entregar'),
-        ('shipped','Enviado'),
-        ('delivered','Entregado'),
-        ('not_delivered','No Entregado'),
-        ('cancelled','cancelled'),
-    ], string=u'Estado de Entrega', index=True, readonly=True)
-    shipping_substatus = fields.Selection([
-        ('ready_to_print','Etiqueta no Impresa'),
-        ('printed','Etiqueta Impresa'),
-    ], string=u'Estado de Impresion', index=True, readonly=True)
-    shipping_mode = fields.Selection([
-        ('me2','Mercado Envio'),
-    ], string=u'Metodo de envio', readonly=True)
-    note = fields.Html(u'Notas', readonly=True, copy=False)
-    need_review = fields.Boolean(u'Necesita Revision?', readonly=True, copy=False)
 
 class MercadolibreOrderItems(models.Model):
     
