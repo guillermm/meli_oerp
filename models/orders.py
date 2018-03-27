@@ -116,8 +116,8 @@ class mercadolibre_orders(models.Model):
         posting_obj = self.env['mercadolibre.posting']
         order_items_obj = self.env['mercadolibre.order_items']
         payments_obj = self.env['mercadolibre.payments']
-        order = None
-        sorder = None
+        order = self.browse()
+        sorder = saleorder_obj.browse()
         # if id is defined, we are updating existing one
         if (oid):
             order = order_obj.browse(oid )
@@ -130,11 +130,10 @@ class mercadolibre_orders(models.Model):
                 order = order_s
             #    order = order_obj.browse(order_s[0] )
 
-            sorder_s = saleorder_obj.search([ ('meli_order_id','=',order_json['id']) ] )
-            if (sorder_s):
-                sorder = sorder_s
-            #if (sorder_s and len(sorder_s)>0):
-            #    sorder = saleorder_obj.browse(sorder_s[0] )
+            if order.sale_order_id:
+                sorder = order.sale_order_id
+            if not sorder and order:
+                sorder = saleorder_obj.search([('meli_order_id','=',order.id)])
         order_fields = {
             'order_id': '%i' % (order_json["id"]),
             'status': order_json["status"],
@@ -279,7 +278,16 @@ class mercadolibre_orders(models.Model):
                 if len(product_related):
                     product_related_obj = product_related.product_variant_ids[0]
                     #si hay informacion de variantes, tomar la variante especifica que se haya vendido
-                    if Item['item'].get('variation_attributes'):
+                    product_variant = False
+                    if Item['item'].get('variation_id'):
+                        product_variant = product_related.product_variant_ids.filtered(lambda x: x.meli_id == str(Item['item'].get('variation_id')))
+                        if product_variant:
+                            all_atr_name_meli = []
+                            for attr in Item['item'].get('variation_attributes', []):
+                                all_atr_name_meli.append(attr['value_name'])
+                            product_related_obj = product_variant
+                            variants_names = ", ".join(all_atr_name_meli)
+                    if not product_variant and Item['item'].get('variation_attributes'):
                         all_atr_meli = set()
                         all_atr_name_meli = set()
                         for attr in Item['item'].get('variation_attributes'):
