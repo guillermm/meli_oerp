@@ -30,6 +30,21 @@
               <field eval="'()'" name="args" />
               <field name="priority">1000</field>
       </record>
+      
+      <record id="ir_cron_module_download_meli_data" model="ir.cron">
+              <field name="name">sincronizar datos desde MELI</field>
+              <field eval="True" name="active" />
+              <field name="user_id" ref="base.user_root" />
+              <field name="interval_number">1</field>
+              <!--<field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).strftime('%Y-%m-%d 12:00:00')" />-->
+              <field name="interval_type">hours</field>
+              <field name="numbercall">-1</field>
+              <field eval="False" name="doall" />
+              <field eval="'res.company'" name="model" />
+              <field eval="'action_sincronice_meli_data'" name="function" />
+              <field eval="'()'" name="args" />
+              <field name="priority">1000</field>
+      </record>
 
 	</data>
 </odoo>

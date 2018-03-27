@@ -106,19 +106,7 @@ class ResCompany(models.Model):
                 self.env['mail.template'].browse(
                     company.mercadolibre_cron_mail.id
                 ).with_context(context).sudo().send_mail( (company.id), force_send=True)
-        #res = {}
-        #for company in self.browse(cr,uid,ids):
-        #for company in self:
-        #    res[company.id] = ML_state
-        company.mercadolibre_state = ML_state
-        if (company.mercadolibre_cron_get_orders):
-            _logger.info("company.mercadolibre_cron_get_orders")
-            self.meli_query_orders()
-        if (company.mercadolibre_cron_get_update_products):
-            _logger.info("company.mercadolibre_cron_get_update_products")
-            self.meli_update_products()
-        #_logger.info("ML_state:"+str(ML_state))
-        #return res
+        return True
 
     mercadolibre_client_id = fields.Char(string='Client ID para ingresar a MercadoLibre',size=128)
     mercadolibre_secret_key = fields.Char(string='Secret Key para ingresar a MercadoLibre',size=128)
@@ -292,3 +280,11 @@ class ResCompany(models.Model):
         CATEGORY_ROOT = company.mercadolibre_category_import
         result = category_model.import_all_categories(category_root=CATEGORY_ROOT )
         return {}
+
+    @api.model
+    def action_sincronice_meli_data(self):
+        company = self.env.user.company_id
+        if (company.mercadolibre_cron_get_orders):
+            _logger.info("obteniendo Pedidos desde Meli")
+            self.meli_query_orders()
+        return True
