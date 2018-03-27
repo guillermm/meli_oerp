@@ -445,7 +445,8 @@ class ProductTemplate(models.Model):
         message_list = []
         return_message_list = self.env.context.get('return_message_list')
         message_text, message_description = "", ""
-        product = self
+        pricelist = self._get_pricelist_for_meli()
+        product = self.with_context(pricelist=pricelist.id)
         company = self.env.user.company_id
         warningobj = self.env['warning']
         REDIRECT_URI = company.mercadolibre_redirect_uri
@@ -467,7 +468,7 @@ class ProductTemplate(models.Model):
             product.meli_title = product.name
         if not product.meli_price:
             # print 'Assigning price: product.meli_price: %s standard_price: %s' % (product.meli_price, product.standard_price)
-            product.meli_price = int(product.list_price)
+            product.meli_price = int(product.price)
         errors = self.validate_fields_meli()
         if errors:
             message_text = "Por favor configure los siguientes campos en el producto: %s." % product.display_name
@@ -508,7 +509,7 @@ class ProductTemplate(models.Model):
             "category_id": product.meli_category.meli_category_id or '0',
             "listing_type_id": product.meli_listing_type or '0',
             "buying_mode": product.meli_buying_mode or '',
-            "price": product.meli_price  or '0',
+            "price": int(product.price),
             "currency_id": product.meli_currency  or 'CLP',
             "condition": product.meli_condition  or '',
             "available_quantity": max([qty_available, 1]),
@@ -560,7 +561,7 @@ class ProductTemplate(models.Model):
             else:
                 variant_with_stock[product_variant.id] = qty_available
             variation_data['available_quantity'] = max([qty_available, 1])
-            variation_data['price'] = product_variant.lst_price
+            variation_data['price'] = int(product_variant.price or product.price)
             variation_data['attribute_combinations'] = attribute_combinations
             variation_data['picture_ids'] = self._get_meli_image_variants(atribute_values)
             variations.append(variation_data)
@@ -682,7 +683,8 @@ class ProductTemplate(models.Model):
 
     @api.multi
     def get_price_for_category_predictor(self):
-        return int(self.meli_price)
+        pricelist = self._get_pricelist_for_meli()
+        return int(self.with_context(pricelist=pricelist.id).price)
     
     @api.multi
     def action_category_predictor(self):
@@ -713,13 +715,21 @@ class ProductTemplate(models.Model):
                 meli_categ = self.env['mercadolibre.category'].import_category(rjson[0]['id'])
         return meli_categ, rjson
     
+    @api.model
+    def _get_pricelist_for_meli(self):
+        pricelist = self.env['product.pricelist'].search([('website_id','!=',False)], limit=1)
+        if not pricelist:
+            pricelist = self.env['product.pricelist'].search([], limit=1)
+        return pricelist
+    
     @api.multi
     def action_sincronice_product_data_ml(self):
         #Completar los datos por un valor por defecto para los campos que esten vacios
         vals = {}
         meli_listing_type = self.env['ir.config_parameter'].get_param('meli_listing_type', 'gold_special').strip()
         meli_condition = self.env['ir.config_parameter'].get_param('meli_condition', 'new').strip()
-        for template in self:
+        pricelist = self._get_pricelist_for_meli()
+        for template in self.with_context(pricelist=pricelist.id):
             vals = {}
             if not template.meli_title:
                 vals['meli_title'] = template.get_title_for_meli()
@@ -730,7 +740,7 @@ class ProductTemplate(models.Model):
             if not template.meli_buying_mode:
                 vals['meli_buying_mode'] = 'buy_it_now'
             if not template.meli_price:
-                vals['meli_price'] = int(template.list_price)
+                vals['meli_price'] = int(template.price)
             if not template.meli_currency:
                 vals['meli_currency'] = 'CLP'
             if not template.meli_condition:
