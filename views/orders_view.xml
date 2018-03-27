@@ -140,12 +140,13 @@
 			<field name="name">mercadolibre.orders.tree</field>
 			<field name="model">mercadolibre.orders</field>
 			<field name="arch" type="xml">
-				<tree create="0" edit="0" delete="0">
+				<tree create="0" edit="0" delete="0" decoration-danger="need_review==True">
 					<field name="order_id" />
 					<field name="sale_order_id" />
 					<field name="status" />
 					<field name="date_created" />
 					<field name="date_closed" />
+					<field name="need_review" invisible="1"/>
 				</tree>
 			</field>
 		</record>
@@ -178,6 +179,7 @@
 								<field name="date_closed" />
 								<field name="total_amount" />
 								<field name="currency_id" />
+								<field name="need_review" invisible="1"/>
 							</group>
 						</group>
 						<notebook colspan="2">
@@ -205,6 +207,9 @@
 									</group>
 								</group>
 							</page>
+							<page string="Notas">
+								<field name="note" />
+							</page>
 						</notebook>
 					</sheet>
 				</form>
@@ -220,6 +225,8 @@
 					<field name="sale_order_id" />
 					<field name="date_created" />
 					<field name="date_closed" />
+					<filter name="filter_need_review" string="Necesita Revisión" 
+						domain="[('need_review','=',True)]"/>
 					<filter string='Status' icon="terp-mrp" domain="[]"
 						context="{'group_by' : 'status'}" />
 				</search>

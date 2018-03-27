@@ -118,6 +118,8 @@ class mercadolibre_orders(models.Model):
         payments_obj = self.env['mercadolibre.payments']
         order = self.browse()
         sorder = saleorder_obj.browse()
+        notes = []
+        need_review = False
         # if id is defined, we are updating existing one
         if (oid):
             order = order_obj.browse(oid )
@@ -312,7 +314,9 @@ class mercadolibre_orders(models.Model):
                     #    _logger.info("product_related:")
                     #    _logger.info( product_related_obj )
                 else:
-                    return {}
+                    notes.append("*Producto: %s con ID: %s no existe" % (Item['item']['title'], Item['item']['id']))
+                    need_review = True
+                    continue
                 order_item_fields = {
                     'order_id': order.id,
                     'posting_id': post_related_obj.id,
@@ -373,6 +377,10 @@ class mercadolibre_orders(models.Model):
                 else:
                     payment_ids.write( ( payment_fields ) )
         if order:
+            order.write({
+                'need_review': need_review,
+                'note': "".join(notes),
+            })
             return_id = self.env['mercadolibre.orders'].update
         return {}
 
@@ -510,6 +518,8 @@ class mercadolibre_orders(models.Model):
     shipping_mode = fields.Selection([
         ('me2','Mercado Envio'),
     ], string=u'Metodo de envio', readonly=True)
+    note = fields.Html(u'Notas', readonly=True, copy=False)
+    need_review = fields.Boolean(u'Necesita Revision?', readonly=True, copy=False)
 
 class MercadolibreOrderItems(models.Model):
     
