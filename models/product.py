@@ -46,7 +46,7 @@ class ProductTemplate(models.Model):
     
     meli_imagen_id = fields.Char(string='Imagen Id', size=256)
     meli_post_required = fields.Boolean(string='Este producto es publicable en Mercado Libre')
-    meli_id = fields.Char( string='Id del item asignado por Meli', size=256, copy=False)
+    meli_id = fields.Char( string='Id del item asignado por Meli', readonly=True, copy=False)
     meli_title = fields.Char(string='Nombre del producto en Mercado Libre',size=256)
     meli_description = fields.Text(string='Descripción')
     meli_description_banner_id = fields.Many2one("mercadolibre.banner","Banner")
@@ -499,9 +499,7 @@ class ProductTemplate(models.Model):
             # print 'website_multi_images presente:   ', product.images
             #recorrer las imagenes y publicarlas
             multi_images_ids = product.product_meli_upload_multi_images()
-        qty_available = product.qty_available
-        if product.meli_available_quantity:
-            qty_available = product.meli_available_quantity
+        qty_available = self._get_meli_quantity_available()
         body = {
             "title": product.meli_title or '',
             "description": {
@@ -530,6 +528,8 @@ class ProductTemplate(models.Model):
         #ID de COLOR = 83000
         #ID de TALLA = 73003
         variations = []
+        variant_without_stock = []
+        variant_with_stock = {}
         for product_variant in self.product_variant_ids:
             variation_data = {}
             attribute_combinations = []
@@ -552,10 +552,14 @@ class ProductTemplate(models.Model):
                 })
             if not attribute_combinations:
                 continue
-            qty_available = product_variant.qty_available
-            if product.meli_available_quantity:
-                qty_available = product.meli_available_quantity
-            variation_data['available_quantity'] = max([qty_available, 1]) 
+            qty_available = self._get_meli_quantity_available_variant(product_variant)
+            #los productos que no tengan stock, despues de publicarlos se deben modificar para pasarles el stock 0
+            #ya que al subirlos por primera vez no se puede publicar con stock 0
+            if qty_available <= 0:
+                variant_without_stock.append(product_variant.id)
+            else:
+                variant_with_stock[product_variant.id] = qty_available
+            variation_data['available_quantity'] = max([qty_available, 1])
             variation_data['price'] = product_variant.lst_price
             variation_data['attribute_combinations'] = attribute_combinations
             variation_data['picture_ids'] = self._get_meli_image_variants(atribute_values)
@@ -564,9 +568,6 @@ class ProductTemplate(models.Model):
         body = self.set_meli_fields_aditionals(body)
         #modificando datos si ya existe el producto en MLA
         if (product.meli_id):
-            qty_available = product.qty_available
-            if product.meli_available_quantity:
-                qty_available = product.meli_available_quantity
             body = {
                 "title": product.meli_title or '',
                 #"description": product.meli_description or '',
@@ -644,6 +645,25 @@ class ProductTemplate(models.Model):
         #last modifications if response is OK
         if "id" in rjson:
             product.write( { 'meli_id': rjson["id"]} )
+            #pasar el id de cada variante
+            if rjson.get('variations', []):
+                self._set_meli_id_from_variants(rjson.get('variations', []))
+            if variant_without_stock:
+                body_stock = {}
+                for product_variant in self.product_variant_ids:
+                    if product_variant.meli_id:
+                        if product_variant.id in variant_without_stock:
+                            body_stock.setdefault('variations', []).append({
+                                'id': product_variant.meli_id,
+                                'available_quantity': 0, 
+                            })
+                        elif product_variant.id in variant_with_stock:
+                            body_stock.setdefault('variations', []).append({
+                                'id': product_variant.meli_id,
+                                'available_quantity': variant_with_stock[product_variant.id], 
+                            })
+                if body_stock:
+                    response = meli.put("/items/"+product.meli_id, body_stock, {'access_token':meli.access_token})
         posting_fields = {'posting_date': str(datetime.now()),'meli_id':rjson['id'],'product_id':product.product_variant_ids[0].id,'name': 'Post: ' + product.meli_title }
         posting_id = self.env['mercadolibre.posting'].search( [('meli_id','=',rjson['id'])]).id
         if not posting_id:
@@ -706,7 +726,7 @@ class ProductTemplate(models.Model):
             if not template.meli_listing_type:
                 vals['meli_listing_type'] = meli_listing_type
             #en modo libre solo se permite 1 cantidad de stock, cuando se use otra lista tomar el stock real
-            vals['meli_available_quantity'] = 1
+            vals['meli_available_quantity'] = template._get_meli_quantity_available()
             if not template.meli_buying_mode:
                 vals['meli_buying_mode'] = 'buy_it_now'
             if not template.meli_price:
@@ -744,6 +764,41 @@ class ProductTemplate(models.Model):
             else:
                 picture_ids.append(product_image.meli_id)
         return picture_ids
+    
+    @api.multi
+    def _get_meli_quantity_available(self):
+        qty_available = self.qty_available
+        if self.meli_available_quantity:
+            qty_available = self.meli_available_quantity
+        return qty_available
+    
+    @api.model
+    def _get_meli_quantity_available_variant(self, variant):
+        qty_available = variant.qty_available
+        if self.meli_available_quantity:
+            qty_available = self.meli_available_quantity
+        return qty_available
+    
+    @api.multi
+    def _set_meli_id_from_variants(self, variation_list):
+        #si hay informacion de variantes, tomar la variante especifica que se haya vendido
+        for variant in variation_list:
+            all_atr_meli = set()
+            all_atr_name_meli = set()
+            for attr in variant.get('attribute_combinations', []):
+                all_atr_meli.add(attr['id'])
+                all_atr_name_meli.add(attr['value_name'].lower())
+            for product_variant in self.product_variant_ids:
+                all_atr = set()
+                all_atr_name = set()
+                for attribute in product_variant.attribute_value_ids:
+                    if not attribute.attribute_id.meli_id:
+                        continue
+                    all_atr.update(set(attribute.attribute_id.meli_id.split(',')))
+                    all_atr_name.add(attribute.name.lower())
+                if all_atr_meli.intersection(all_atr) and all_atr_name_meli == all_atr_name:
+                    product_variant.write({'meli_id': variant['id']})
+                    break
 
     @api.model
     def action_send_products_to_meli(self):
@@ -772,4 +827,10 @@ class ProductTemplate(models.Model):
                 csv_file.writerow([line[0], line[1]])
             fp.close()
         return True
+    
+class ProductProduct(models.Model):
+
+    _inherit = "product.product"
+    
+    meli_id = fields.Char( string='Id del item asignado por Meli', readonly=True, copy=False)
     
