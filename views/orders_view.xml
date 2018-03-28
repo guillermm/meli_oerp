@@ -51,10 +51,12 @@
 				<tree create="0" edit="0" delete="0" decoration-danger="need_review==True">
 					<field name="order_id" />
 					<field name="sale_order_id" />
-					<field name="status" />
+					<field name="partner_id" />
 					<field name="date_created" />
 					<field name="date_closed" />
-					<field name="need_review" invisible="1"/>
+					<field name="total_amount" sum="Total" />
+					<field name="status" />
+					<field name="need_review" invisible="1" />
 				</tree>
 			</field>
 		</record>
@@ -71,28 +73,29 @@
 						<button name="action_print_tag_delivery" string="ReImprimir Etiqueta de despacho"
 							type="object"
 							attrs="{'invisible': ['|', '|', ('shipping_status','!=','ready_to_ship'), ('shipping_id','=',False), ('shipping_substatus','!=','printed')]}" />
+						<field name="status" widget="statusbar" statusbar_visible="confirmed,paid" />
 					</header>
 					<sheet>
 						<group>
 							<group>
-								<field name="seller" />
 								<field name="order_id" />
 								<field name="sale_order_id" options="{'no_create': True}" />
-								<field name="status_detail" />
-								<field name="buyer" />
+								<field name="partner_id" options="{'no_create': True}" />
 							</group>
 							<group>
-								<field name="status" />
 								<field name="date_created" />
 								<field name="date_closed" />
-								<field name="total_amount" />
-								<field name="currency_id" />
-								<field name="need_review" invisible="1"/>
 							</group>
 						</group>
 						<notebook colspan="2">
 							<page string="Productos">
 								<field name="order_items" />
+								<group class="oe_subtotal_footer oe_right" colspan="2"
+									name="sale_total">
+									<field name="total_amount" nolabel="1"
+										class="oe_subtotal_footer_separator" />
+								</group>
+								<div class="oe_clear" />
 							</page>
 							<page string="Pagos">
 								<field name="payments" />
@@ -115,6 +118,18 @@
 									</group>
 								</group>
 							</page>
+							<page string="Informacion Adicional">
+								<group>
+									<group>
+										<field name="buyer" />
+										<field name="status_detail" />
+									</group>
+									<group>
+										<field name="currency_id" />
+										<field name="need_review" invisible="1" />
+									</group>
+								</group>
+							</page>
 							<page string="Notas">
 								<field name="note" />
 							</page>
@@ -131,10 +146,12 @@
 				<search>
 					<field name="order_id" />
 					<field name="sale_order_id" />
+					<field name="partner_id" />
 					<field name="date_created" />
 					<field name="date_closed" />
-					<filter name="filter_need_review" string="Necesita Revisión" 
-						domain="[('need_review','=',True)]"/>
+					<filter name="filter_need_review" string="Necesita Revisión"
+						domain="[('need_review','=',True)]" />
+					<filter string='Cliente' context="{'group_by' : 'partner_id'}" />
 					<filter string='Status' icon="terp-mrp" domain="[]"
 						context="{'group_by' : 'status'}" />
 				</search>
@@ -146,12 +163,12 @@
 			<field name="model">mercadolibre.order_items</field>
 			<field name="arch" type="xml">
 				<tree create="0" edit="0" delete="0">
-					<field name="posting_id" />
+					<field name="product_id" />
 					<field name="order_item_title" />
 					<field name="order_id" />
 					<field name="order_item_id" />
-					<field name="unit_price" />
 					<field name="quantity" />
+					<field name="unit_price" />
 				</tree>
 			</field>
 		</record>

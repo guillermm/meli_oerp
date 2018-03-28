@@ -19,14 +19,21 @@
 #
 ##############################################################################
 
+import os
 import re
 import json
 import logging
-
-from odoo import fields, osv, models, api
-import odoo.addons.decimal_precision as dp
-
+from datetime import datetime
 _logger = logging.getLogger(__name__)
+
+try:
+    import csv
+except ImportError:
+    csv = False
+    _logger.error('This module needs csv. Please install csv on your system')
+
+from odoo import fields, osv, models, api, tools
+import odoo.addons.decimal_precision as dp
 
 #https://api.mercadolibre.com/questions/search?item_id=MLA508223205
 
@@ -39,6 +46,8 @@ class mercadolibre_orders(models.Model):
     order_id = fields.Char('Order Id')
     sale_order_id = fields.Many2one('sale.order', u'Pedido de Venta',
         copy=False, readonly=True)
+    partner_id = fields.Many2one('res.partner', u'Cliente',
+        copy=False, readonly=True, ondelete="restrict")
     status = fields.Selection( [
         ("confirmed","Confirmado"), #Initial state of an order, and it has no payment yet.
         ("payment_required","Pago requerido"), #The order needs a payment to become confirmed and show users information.
@@ -55,7 +64,6 @@ class mercadolibre_orders(models.Model):
     total_amount = fields.Char(string='Total amount')
     currency_id = fields.Char(string='Currency')
     buyer =  fields.Many2one( "mercadolibre.buyers","Buyer")
-    seller = fields.Text( string='Seller' )
     shipping_id = fields.Char(u'ID de Entrega')
     shipping_name = fields.Char(u'Metodo de Entrega')
     shipping_method_id = fields.Char(u'ID de Metodo de Entrega')
@@ -190,18 +198,27 @@ class mercadolibre_orders(models.Model):
         }
         return order_vals
     
-    @api.model
-    def _prepare_sale_order_vals(self, meli_order_vals, partner, pricelist, company):
+    @api.multi
+    def _prepare_sale_order_vals(self, pricelist, company):
         sale_order_vals = {
             'company_id': company.id,
-            'partner_id': partner.id,
+            'partner_id': self.partner_id.id,
             'pricelist_id': pricelist.id,
-            'meli_status': meli_order_vals["status"],
-            'meli_status_detail': meli_order_vals["status_detail"] or '' ,
-            'meli_total_amount': meli_order_vals["total_amount"],
-            'meli_currency_id': meli_order_vals["currency_id"],
-            'meli_date_created': meli_order_vals["date_created"] or '',
-            'meli_date_closed': meli_order_vals["date_closed"] or '',
+            'meli_order_id': self.id,
+            'meli_status': self.status,
+            'meli_status_detail': self.status_detail,
+            'meli_total_amount': self.total_amount,
+            'meli_currency_id': self.currency_id,
+            'meli_date_created': self.date_created,
+            'meli_date_closed': self.date_closed,
+            'meli_shipping': self.shipping,
+            'shipping_id': self.shipping_id,
+            'shipping_name': self.shipping_name,
+            'shipping_method_id': self.shipping_method_id,
+            'shipping_cost': self.shipping_cost,
+            'shipping_status': self.shipping_status,
+            'shipping_substatus': self.shipping_substatus,
+            'shipping_mode': self.shipping_mode,
         }
         if company.mercadolibre_sale_team_id:
             sale_order_vals['team_id'] = company.mercadolibre_sale_team_id.id
@@ -212,6 +229,26 @@ class mercadolibre_orders(models.Model):
             sale_order_vals['warehouse_id'] = warehouse_meli.id
         return sale_order_vals
     
+    @api.multi
+    def _find_create_sale_order(self):
+        SaleOrderModel = self.env['sale.order']
+        self.ensure_one()
+        sale_order = self.sale_order_id
+        pricelist = self.env['product.template']._get_pricelist_for_meli()
+        company = self.env.user.company_id
+        sale_order_vals = self._prepare_sale_order_vals(pricelist, company)
+        if (sale_order):
+            _logger.info("Updating sale.order: %s", sale_order.id)
+            sale_order.write(sale_order_vals)
+        else:
+            _logger.info("Adding new sale.order: " )
+            _logger.info(sale_order_vals)            
+            sale_order = SaleOrderModel.create(sale_order_vals)
+            self.write({'sale_order_id': sale_order.id})
+        for line in self.order_items:
+            self._add_sale_order_line(sale_order, line)
+        return sale_order
+        
     @api.model
     def _find_product(self, meli_order_line_vals):
         ProductTemplateModel = self.env['product.template']
@@ -256,7 +293,7 @@ class mercadolibre_orders(models.Model):
     def _prepare_order_line_vals(self, order, meli_order_line_vals, posting, product, variants_names):
         order_line_vals = {
             'order_id': order.id,
-            'posting_id': posting.id,
+            'product_id': product.id,
             'order_item_id': meli_order_line_vals['item']['id'],
             'order_item_title': "%s %s" % (meli_order_line_vals['item']['title'], ("(%s)" % variants_names) if variants_names else ''),
             'order_item_category_id': meli_order_line_vals['item']['category_id'],
@@ -281,22 +318,22 @@ class mercadolibre_orders(models.Model):
         return OrderLine
     
     @api.model
-    def _prepare_sale_order_line_vals(self, sale_order, meli_order_line_vals, product, variants_names):
+    def _prepare_sale_order_line_vals(self, sale_order, meli_order_line):
         sale_order_line_vals = {
             'order_id': sale_order.id,
-            'meli_order_item_id': meli_order_line_vals['item']['id'],
-            'price_unit': float(meli_order_line_vals['unit_price']),
-            'product_id': product.id,
-            'product_uom_qty': meli_order_line_vals['quantity'],
-            'product_uom': product.uom_id.id,
-            'name': "%s %s" % (meli_order_line_vals['item']['title'], ("(%s)" % variants_names) if variants_names else ''),
+            'name': meli_order_line.order_item_title,
+            'meli_order_item_id': meli_order_line.order_item_id,
+            'product_id': meli_order_line.product_id.id,
+            'product_uom_qty': meli_order_line.quantity,
+            'product_uom': meli_order_line.product_id.uom_id.id,
+            'price_unit': meli_order_line.unit_price,
         }
         return sale_order_line_vals
     
     @api.model
-    def _add_sale_order_line(self, sale_order, meli_order_line_vals, product_find, variants_names):
+    def _add_sale_order_line(self, sale_order, meli_order_line):
         SaleOrderLineModel = self.env['sale.order.line']
-        sale_order_line_vals = self._prepare_sale_order_line_vals(sale_order, meli_order_line_vals, product_find, variants_names)
+        sale_order_line_vals = self._prepare_sale_order_line_vals(sale_order, meli_order_line)
         SaleOrderLine = SaleOrderLineModel.search([
             ('meli_order_item_id', '=', sale_order_line_vals['meli_order_item_id']),
             ('order_id','=',sale_order.id),
@@ -338,17 +375,13 @@ class mercadolibre_orders(models.Model):
     def orders_update_order_json( self, data, context=None ):
         order_json = data["order_json"]
         _logger.info("orders_update_order_json > data: " + str(order_json))
-        SaleOrderModel = self.env['sale.order']
         PartnerModel = self.env['res.partner']
         MeliOrderModel = self.env['mercadolibre.orders']
         PostingModel = self.env['mercadolibre.posting']
-        pricelist = self.env['product.template']._get_pricelist_for_meli()
         partner = PartnerModel.browse()
-        company = self.env.user.company_id
         notes = []
         need_review = False
-        meli_order = MeliOrderModel.search([('order_id','=',order_json['id']) ] )
-        sale_order = meli_order.sale_order_id
+        meli_order = MeliOrderModel.search([('order_id','=',order_json['id'])], limit=1)
         order_vals = self._prepare_order_vals(order_json)
         if 'buyer' in order_json:
             Buyer = order_json['buyer']
@@ -358,18 +391,15 @@ class mercadolibre_orders(models.Model):
                 document_number = (re.sub('[^1234567890Kk]', '', str(document_number))).zfill(9).upper()
             buyer = self._find_create_buyer(Buyer, document_number)
             partner = self._find_create_partner(Buyer, document_number)
-            if buyer and partner and not buyer.partner_id:
+            order_vals['buyer'] = buyer.id
+            if not buyer.partner_id:
                 buyer.partner_id = partner
-            if buyer:
-                order_vals['buyer'] = buyer.id
         #process base meli_order fields
-        sale_order_vals = self._prepare_sale_order_vals(order_json, partner, pricelist, company)
         if (order_json["shipping"]):
             order_vals['shipping'] = self.pretty_json( id, order_json["shipping"] )
-            sale_order_vals['meli_shipping'] = self.pretty_json( id, order_json["shipping"] )
             shipping_values = self.prepare_values_shipping(order_json["shipping"])
             order_vals.update(shipping_values)
-            sale_order_vals.update(shipping_values)
+            order_vals['partner_id'] = partner.id
         #create or update meli_order
         if (meli_order):
             _logger.info("Updating meli orden: %s", meli_order.id)
@@ -377,16 +407,6 @@ class mercadolibre_orders(models.Model):
         else:
             _logger.info("Adding new meli order: %s", str(order_vals))
             meli_order = MeliOrderModel.create(order_vals)
-
-        sale_order_vals['meli_order_id'] = meli_order.id
-        if (sale_order):
-            _logger.info("Updating sale.order: %s", sale_order.id)
-            sale_order.write(sale_order_vals)
-        else:
-            _logger.info("Adding new sale.order: " )
-            _logger.info(sale_order_vals)            
-            sale_order = SaleOrderModel.create(sale_order_vals)
-        meli_order.write({'sale_order_id': sale_order.id})
         #update internal fields (items, payments, buyers)
         if 'order_items' in order_json:
             notes = []
@@ -407,15 +427,14 @@ class mercadolibre_orders(models.Model):
                     need_review = True
                     continue
                 self._add_order_line(meli_order, Item, post_related, product_find, variants_names)
-                self._add_sale_order_line(sale_order, Item, product_find, variants_names)
         if 'payments' in order_json:
             for meli_payment_vals in order_json['payments']:
                 self._add_payment(meli_order, meli_payment_vals)
-        if meli_order:
-            meli_order.write({
-                'need_review': need_review,
-                'note': "".join(notes),
-            })
+        meli_order._find_create_sale_order()
+        meli_order.write({
+            'need_review': need_review,
+            'note': "".join(notes),
+        })
         return meli_order
 
     def orders_update_order( self, context=None ):
@@ -509,20 +528,91 @@ class mercadolibre_orders(models.Model):
                 },
                 'target': 'new',
         }
+        
+    @api.model
+    def action_validate_sale_order(self):
+        PaymentModel = self.env['account.payment']
+        limit_meli = int(self.env['ir.config_parameter'].get_param('meli.order.limit', '100').strip())
+        meli_orders = self.search([
+            ('status','=', 'paid'),
+            ('shipping_status','=', 'ready_to_ship'),
+        ], limit=limit_meli)
+        message_list = []
+        current_document_info = ""
+        for meli_order in meli_orders:
+            current_document_info = ""
+            try:
+                #en caso de no tener pedido de venta, crearlo
+                sale_order = meli_order.sale_order_id
+                if not sale_order:
+                    sale_order = meli_order._find_create_sale_order()
+                if sale_order.state in ('draft', 'sent'):
+                    current_document_info = "Confirmando Pedido de Venta ID: %s Numero: %s" % (sale_order.id, sale_order.name)
+                    _logger.info(current_document_info)
+                    sale_order.action_confirm()
+                #validar los picking
+                for picking in sale_order.picking_ids.filtered(lambda x: x.state not in ('draft', 'cancel', 'done')):
+                    current_document_info = "Confirmando y validando picking ID: %s Numero: %s" % (picking.id, picking.name)
+                    _logger.info(current_document_info)
+                    picking.action_confirm()
+                    picking.force_assign()
+                    picking.action_done()
+                #crear y validar factura
+                if not sale_order.invoice_ids:
+                    current_document_info = "Creando factura para Pedido de venta ID: %s Numero: %s" % (sale_order.id, sale_order.name)
+                    _logger.info(current_document_info)
+                    sale_order.action_invoice_create()
+                for invoice in sale_order.invoice_ids.filtered(lambda x: x.state not in ('open', 'paid', 'cancel')):
+                    current_document_info = "Confirmando y pagando la factura ID: %s Numero: %s" % (invoice.id, invoice.display_name)
+                    _logger.info(current_document_info)
+                    invoice.action_invoice_open()
+                    #marcar la factura como pagada
+#                     for journal in journals:
+#                         account_journal_obj= self.env['account.journal'].browse(journal.get('journal_id'))
+#                         if account_journal_obj:
+#                             payment_vals = {
+#                                 'payment_type': 'inbound',
+#                                 'partner_id': invoice.partner_id.id,
+#                                 'partner_type': 'customer',
+#                                 'journal_id': account_journal_obj.id or False,
+#                                 'amount': journal.get('amount'),
+#                                 'payment_method_id': account_journal_obj.inbound_payment_method_ids.id,
+#                                 'invoice_ids': [(6, 0, [invoice.id])],
+#                             }
+#                             if journal.get('statement_id'):
+#                                 payment_vals['cash_register_id'] = journal.get('statement_id')
+#                                 payment_vals['apply_cash_register'] = True
+#                             payment_id = PaymentModel.create(payment_vals)
+#                             payment_id.post()
+            except Exception, e:
+                _logger.error(current_document_info)
+                _logger.error(tools.ustr(e))
+                message_list.append((current_document_info, tools.ustr(e)))
+        if message_list and csv:
+            file_path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'logs'))
+            if not os.path.exists(file_path):
+                os.makedirs(file_path)
+            file_path = os.path.join(file_path, "validar_pedidos_meli_%s.csv" % fields.Datetime.context_timestamp(self, datetime.now()).strftime('%Y_%m_%d_%H_%M_%S'))
+            fp = open(file_path,'wb')
+            csv_file = csv.writer(fp, quotechar='"', quoting=csv.QUOTE_ALL)
+            csv_file.writerow(['Mensaje', 'Detalle'])
+            for line in message_list:
+                csv_file.writerow([line[0], line[1]])
+            fp.close()
+        return True
 
 class MercadolibreOrderItems(models.Model):
     
     _name = "mercadolibre.order_items"
     _description = "Producto pedido en MercadoLibre"
 
-    posting_id = fields.Many2one("mercadolibre.posting","Posting")
     order_id = fields.Many2one("mercadolibre.orders","Order")
+    product_id = fields.Many2one('product.product', u'Producto', ondelete="restrict", index=True)
     order_item_id = fields.Char('Item Id')
     order_item_title = fields.Char('Item Title')
     order_item_category_id = fields.Char('Item Category Id')
     unit_price = fields.Char(string='Unit price')
     quantity = fields.Integer(string='Quantity')
-    #       'total_price': fields.char(string='Total price'),
     currency_id = fields.Char(string='Currency')
 
 class MercadolibrePayments(models.Model):

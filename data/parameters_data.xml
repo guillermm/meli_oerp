@@ -7,6 +7,11 @@
 			<field name="value">1000</field>
 		</record>
 		
+		<record id="limit_order_meli_parameter" model="ir.config_parameter">
+			<field name="key">meli.order.limit</field>
+			<field name="value">100</field>
+		</record>
+		
 		<record id="meli_listing_type_parameter" model="ir.config_parameter">
 			<field name="key">meli_listing_type</field>
 			<field name="value">gold_special</field>
