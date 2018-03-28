@@ -72,7 +72,7 @@ class ProductPost(models.TransientModel):
                 res = product.product_post()
             #Actualiza
             elif (product.meli_pub and product.meli_id):
-                res = product.product_post()
+                res = product.product_update_to_meli()
             #Pausa
             elif (not product.meli_pub and product.meli_id):
                 res = product.product_meli_status_pause()

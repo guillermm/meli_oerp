@@ -465,7 +465,7 @@ class ProductTemplate(models.Model):
         # print product.meli_category.meli_category_id
         if not product.meli_title:
             # print 'Assigning title: product.meli_title: %s name: %s' % (product.meli_title, product.name)
-            product.meli_title = product.name
+            product.meli_title = product.get_title_for_meli()
         if not product.meli_price:
             # print 'Assigning price: product.meli_price: %s standard_price: %s' % (product.meli_price, product.standard_price)
             product.meli_price = int(product.price)
@@ -474,6 +474,8 @@ class ProductTemplate(models.Model):
             message_text = "Por favor configure los siguientes campos en el producto: %s." % product.display_name
             message_description = "".join(errors)
             message_list.append((message_text, message_description))
+            if return_message_list:
+                return message_list
             return warningobj.info(title='ERRORES AL SUBIR PUBLICACION', message=message_text, message_html=message_description)
         #publicando imagen cargada en OpenERP
         product_image = product.get_product_image()
@@ -673,6 +675,155 @@ class ProductTemplate(models.Model):
             return message_list
         return {}
     
+    def product_update_to_meli(self):
+        meli_util_model = self.env['meli.util']
+        message_list = []
+        return_message_list = self.env.context.get('return_message_list')
+        message_text, message_description = "", ""
+        pricelist = self._get_pricelist_for_meli()
+        product = self.with_context(pricelist=pricelist.id)
+        company = self.env.user.company_id
+        warningobj = self.env['warning']
+        REDIRECT_URI = company.mercadolibre_redirect_uri
+        CLIENT_ID = company.mercadolibre_client_id
+        CLIENT_SECRET = company.mercadolibre_secret_key
+        ACCESS_TOKEN = company.mercadolibre_access_token
+        if not ACCESS_TOKEN:
+            meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET)
+            url_login_meli = meli.auth_url(redirect_URI=REDIRECT_URI)
+            return {
+                "type": "ir.actions.act_url",
+                "url": url_login_meli,
+                "target": "new",
+            }
+        meli = meli_util_model.get_new_instance(company)
+        #publicando multiples imagenes
+        multi_images_ids = {}
+        if (product.product_image_ids):
+            # print 'website_multi_images presente:   ', product.images
+            #recorrer las imagenes y publicarlas
+            multi_images_ids = product.product_meli_upload_multi_images()
+        qty_available = self._get_meli_quantity_available()
+        body = {
+            "title": product.get_title_for_meli(),
+            "warranty": product.meli_warranty or '',
+            "video_id": product.meli_video  or '',
+        }
+        if len(self.product_variant_ids) <= 1:
+            body.update({
+                "price": int(product.price),
+                "available_quantity": max([qty_available, 1]),
+            })
+        #ID de COLOR = 83000
+        #ID de TALLA = 73003
+        variations = []
+        variant_without_stock = []
+        variant_with_stock = {}
+        for product_variant in self.product_variant_ids:
+            variation_data = {}
+            attribute_combinations = []
+            atribute_values = []
+            for attribute in product_variant.attribute_value_ids:
+                if not attribute.attribute_id.meli_id:
+                    continue
+                attribute_meli = False
+                #si el atributo no existe en la categoria no agregarlo xq no dejara hacer la publicacion
+                for attrib_meli_id in attribute.attribute_id.meli_id.split(','):
+                    attribute_meli = self.meli_category.find_attribute(attrib_meli_id)
+                    if attribute_meli:
+                        break
+                if not attribute_meli:
+                    continue
+                atribute_values.append(attribute.id)
+                attribute_combinations.append({
+                    'id': attribute_meli.code,
+                    'value_name': attribute.name,
+                })
+            if not attribute_combinations:
+                continue
+            qty_available = self._get_meli_quantity_available_variant(product_variant)
+            #los productos que no tengan stock, despues de publicarlos se deben modificar para pasarles el stock 0
+            #ya que al subirlos por primera vez no se puede publicar con stock 0
+            if qty_available <= 0:
+                variant_without_stock.append(product_variant.id)
+            else:
+                variant_with_stock[product_variant.id] = qty_available
+            variation_data['available_quantity'] = max([qty_available, 1])
+            variation_data['price'] = int(product_variant.price or product.price)
+            variation_data['attribute_combinations'] = attribute_combinations
+            variation_data['picture_ids'] = self._get_meli_image_variants(atribute_values)
+            if product_variant.meli_id:
+                variation_data['id'] = product_variant.meli_id
+            variations.append(variation_data)
+        body['variations'] = variations
+        body = self.set_meli_fields_aditionals(body)
+        #si la compañia tiene ID de tienda oficial, pasarla a los productos
+        if company.mercadolibre_official_store_id:
+            body['official_store_id'] = company.mercadolibre_official_store_id
+        #asignando imagen de logo (por source)
+        #if product.meli_imagen_logo:
+        if product.meli_imagen_id:
+            body.setdefault('pictures', []).append({'id': product.meli_imagen_id})
+            if (multi_images_ids):
+                body.setdefault('pictures', []).extend(multi_images_ids)
+            if product.meli_imagen_logo:
+                body.setdefault('pictures', []).append({'source': product.meli_imagen_logo})
+        rjson = {}
+        if product.meli_id:
+            response = meli.put("/items/"+product.meli_id, body, {'access_token':meli.access_token})
+            rjson = response.json()
+            _logger.info(rjson)
+        #check error
+        if "error" in rjson:
+            #print "Error received: %s " % rjson["error"]
+            error_msg = 'MELI: mensaje de error:  %s , mensaje: %s, status: %s, cause: %s ' % (rjson["error"], rjson["message"], rjson["status"], rjson["cause"])
+            _logger.error(error_msg)
+            missing_fields = error_msg
+            #expired token
+            if "message" in rjson and (rjson["message"]=='invalid_token' or rjson["message"]=="expired_token"):
+                meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET)
+                url_login_meli = meli.auth_url(redirect_URI=REDIRECT_URI)
+                #print "url_login_meli:", url_login_meli
+                #raise osv.except_osv( _('MELI WARNING'), _('INVALID TOKEN or EXPIRED TOKEN (must login, go to Edit Company and login):  error: %s, message: %s, status: %s') % ( rjson["error"], rjson["message"],rjson["status"],))
+                message_text = "Debe iniciar sesión en MELI.  "
+                message_description = ""
+                message_list.append((message_text, message_description))
+                if return_message_list:
+                    return message_list
+                return warningobj.info( title='MELI WARNING', message=message_text, message_html="")
+            else:
+                #Any other errors
+                message_text = "Completar todos los campos! Producto: %s" % product.display_name
+                message_description = "<br><br>"+missing_fields
+                message_list.append((message_text, message_description))
+                if return_message_list:
+                    return message_list
+                return warningobj.info( title='MELI WARNING', message=message_text, message_html=message_description)
+        #last modifications if response is OK
+        if "id" in rjson:
+            #pasar el id de cada variante
+            if rjson.get('variations', []):
+                self._set_meli_id_from_variants(rjson.get('variations', []))
+            if variant_without_stock:
+                body_stock = {}
+                for product_variant in self.product_variant_ids:
+                    if product_variant.meli_id:
+                        if product_variant.id in variant_without_stock:
+                            body_stock.setdefault('variations', []).append({
+                                'id': product_variant.meli_id,
+                                'available_quantity': 0, 
+                            })
+                        elif product_variant.id in variant_with_stock:
+                            body_stock.setdefault('variations', []).append({
+                                'id': product_variant.meli_id,
+                                'available_quantity': variant_with_stock[product_variant.id], 
+                            })
+                if body_stock:
+                    response = meli.put("/items/"+product.meli_id, body_stock, {'access_token':meli.access_token})
+        if return_message_list:
+            return message_list
+        return {}
+    
     @api.multi
     def get_title_for_meli(self):
         return self.name
@@ -843,6 +994,32 @@ class ProductTemplate(models.Model):
             if not os.path.exists(file_path):
                 os.makedirs(file_path)
             file_path = os.path.join(file_path, "subir_productos_meli_%s.csv" % fields.Datetime.context_timestamp(self, datetime.now()).strftime('%Y_%m_%d_%H_%M_%S'))
+            fp = open(file_path,'wb')
+            csv_file = csv.writer(fp, quotechar='"', quoting=csv.QUOTE_ALL)
+            csv_file.writerow(['Mensaje', 'Detalle'])
+            for line in message_list:
+                csv_file.writerow([line[0], line[1]])
+            fp.close()
+        return True
+    
+    @api.model
+    def action_update_products_to_meli(self):
+        limit_meli = int(self.env['ir.config_parameter'].get_param('meli.product.limit', '1000').strip())
+        products = self.with_context(return_message_list=True).search([
+            ('meli_pub','=',True),
+            ('meli_id','!=',False),
+            ], limit=limit_meli)
+        message_list = []
+        message = []
+        for product in products:
+            message = product.product_update_to_meli()
+            if isinstance(message, list):
+                message_list.extend(message)
+        if message_list and csv:
+            file_path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'logs'))
+            if not os.path.exists(file_path):
+                os.makedirs(file_path)
+            file_path = os.path.join(file_path, "actualizar_productos_meli_%s.csv" % fields.Datetime.context_timestamp(self, datetime.now()).strftime('%Y_%m_%d_%H_%M_%S'))
             fp = open(file_path,'wb')
             csv_file = csv.writer(fp, quotechar='"', quoting=csv.QUOTE_ALL)
             csv_file.writerow(['Mensaje', 'Detalle'])
