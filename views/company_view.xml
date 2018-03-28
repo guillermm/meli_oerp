@@ -27,6 +27,7 @@
 									<field name="mercadolibre_code" />
 									<field name="mercadolibre_seller_id" />
 									<field name="mercadolibre_official_store_id" />
+									<field name="mercadolibre_sale_team_id" options="{'no_create': True}"/>
 								</group>
 								<group name="Cron Job" col="2">
 									<field name="mercadolibre_category_import" />

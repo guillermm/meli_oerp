@@ -191,8 +191,9 @@ class mercadolibre_orders(models.Model):
         return order_vals
     
     @api.model
-    def _prepare_sale_order_vals(self, meli_order_vals, partner, pricelist):
+    def _prepare_sale_order_vals(self, meli_order_vals, partner, pricelist, company):
         sale_order_vals = {
+            'company_id': company.id,
             'partner_id': partner.id,
             'pricelist_id': pricelist.id,
             'meli_status': meli_order_vals["status"],
@@ -202,6 +203,13 @@ class mercadolibre_orders(models.Model):
             'meli_date_created': meli_order_vals["date_created"] or '',
             'meli_date_closed': meli_order_vals["date_closed"] or '',
         }
+        if company.mercadolibre_sale_team_id:
+            sale_order_vals['team_id'] = company.mercadolibre_sale_team_id.id
+        warehouse_meli = self.env['stock.warehouse'].sudo().search([('meli_published','=',True), ('company_id','=',company.id)], limit=1)
+        if not warehouse_meli:
+            warehouse_meli = self.env['stock.warehouse'].sudo().search([('company_id','=',company.id)], limit=1)
+        if warehouse_meli:
+            sale_order_vals['warehouse_id'] = warehouse_meli.id
         return sale_order_vals
     
     @api.model
@@ -336,6 +344,7 @@ class mercadolibre_orders(models.Model):
         PostingModel = self.env['mercadolibre.posting']
         pricelist = self.env['product.template']._get_pricelist_for_meli()
         partner = PartnerModel.browse()
+        company = self.env.user.company_id
         notes = []
         need_review = False
         meli_order = MeliOrderModel.search([('order_id','=',order_json['id']) ] )
@@ -354,7 +363,7 @@ class mercadolibre_orders(models.Model):
             if buyer:
                 order_vals['buyer'] = buyer.id
         #process base meli_order fields
-        sale_order_vals = self._prepare_sale_order_vals(order_json, partner, pricelist)
+        sale_order_vals = self._prepare_sale_order_vals(order_json, partner, pricelist, company)
         if (order_json["shipping"]):
             order_vals['shipping'] = self.pretty_json( id, order_json["shipping"] )
             sale_order_vals['meli_shipping'] = self.pretty_json( id, order_json["shipping"] )

@@ -123,6 +123,7 @@ class ResCompany(models.Model):
     mercadolibre_state = fields.Boolean( compute=get_meli_state, string="Se requiere Iniciar Sesión con MLA", store=False )
     mercadolibre_category_import = fields.Char( string='Category Code to Import', size=256)
     mercadolibre_recursive_import = fields.Boolean( string='Import all categories (recursiveness)', size=256)
+    mercadolibre_sale_team_id = fields.Many2one('crm.team', u'Equipo de Ventas por defecto')
 
     mercadolibre_cron_refresh = fields.Boolean(string='Cron Refresh')
     mercadolibre_cron_mail = fields.Many2one(
