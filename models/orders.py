@@ -489,6 +489,8 @@ class mercadolibre_orders(models.Model):
     def action_print_tag_delivery(self):
         self.ensure_one()
         self.shipping_substatus = 'printed'
+        if self.sale_order_id:
+            self.sale_order_id.shipping_substatus = 'printed'
         return {'type': 'ir.actions.act_url',
                 'url': '/download/saveas?model=%(model)s&record_id=%(record_id)s&method=%(method)s&filename=%(filename)s' % {
                     'filename': "Etiqueta de Envio %s.pdf" % (self.shipping_id),
