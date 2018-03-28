@@ -529,6 +529,24 @@ class mercadolibre_orders(models.Model):
                 'target': 'new',
         }
         
+    @api.multi
+    def _get_payment_journal_for_invoice(self, invoice):
+        return self.env['account.journal'].search([('type', 'in', ('cash', 'bank'))], limit=1)
+        
+    @api.multi
+    def _prepare_payment_for_invoice(self, invoice):
+        payment_journal = self._get_payment_journal_for_invoice(invoice)
+        payment_vals = {
+            'payment_type': 'inbound',
+            'partner_id': invoice.partner_id.id,
+            'partner_type': 'customer',
+            'journal_id': payment_journal.id,
+            'amount': self.total_amount,
+            'payment_method_id': payment_journal.inbound_payment_method_ids.id,
+            'invoice_ids': [(6, 0, [invoice.id])],
+        }
+        return payment_vals
+        
     @api.model
     def action_validate_sale_order(self):
         PaymentModel = self.env['account.payment']
@@ -567,23 +585,9 @@ class mercadolibre_orders(models.Model):
                     _logger.info(current_document_info)
                     invoice.action_invoice_open()
                     #marcar la factura como pagada
-#                     for journal in journals:
-#                         account_journal_obj= self.env['account.journal'].browse(journal.get('journal_id'))
-#                         if account_journal_obj:
-#                             payment_vals = {
-#                                 'payment_type': 'inbound',
-#                                 'partner_id': invoice.partner_id.id,
-#                                 'partner_type': 'customer',
-#                                 'journal_id': account_journal_obj.id or False,
-#                                 'amount': journal.get('amount'),
-#                                 'payment_method_id': account_journal_obj.inbound_payment_method_ids.id,
-#                                 'invoice_ids': [(6, 0, [invoice.id])],
-#                             }
-#                             if journal.get('statement_id'):
-#                                 payment_vals['cash_register_id'] = journal.get('statement_id')
-#                                 payment_vals['apply_cash_register'] = True
-#                             payment_id = PaymentModel.create(payment_vals)
-#                             payment_id.post()
+                    payment_vals = meli_order._prepare_payment_for_invoice(invoice)
+                    payment_id = PaymentModel.create(payment_vals)
+                    payment_id.post()
             except Exception, e:
                 _logger.error(current_document_info)
                 _logger.error(tools.ustr(e))
