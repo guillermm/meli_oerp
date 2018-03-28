@@ -40,17 +40,12 @@ class mercadolibre_orders(models.Model):
     sale_order_id = fields.Many2one('sale.order', u'Pedido de Venta',
         copy=False, readonly=True)
     status = fields.Selection( [
-        #Initial state of an order, and it has no payment yet.
-                                        ("confirmed","Confirmado"),
-        #The order needs a payment to become confirmed and show users information.
-                                      ("payment_required","Pago requerido"),
-        #There is a payment related with the order, but it has not accredited yet
-                                    ("payment_in_process","Pago en proceso"),
-        #The order has a related payment and it has been accredited.
-                                    ("paid","Pagado"),
-        #The order has not completed by some reason.
-                                    ("cancelled","Cancelado")], string='Order Status')
-
+        ("confirmed","Confirmado"), #Initial state of an order, and it has no payment yet.
+        ("payment_required","Pago requerido"), #The order needs a payment to become confirmed and show users information.
+        ("payment_in_process","Pago en proceso"), #There is a payment related with the order, but it has not accredited yet
+        ("paid","Pagado"), #The order has a related payment and it has been accredited.
+        ("cancelled","Cancelado"), #The order has not completed by some reason.
+    ], string='Order Status')
     status_detail = fields.Text(string='Status detail, in case the order was cancelled.')
     date_created = fields.Date('Creation date')
     date_closed = fields.Date('Closing date')
@@ -130,298 +125,289 @@ class mercadolibre_orders(models.Model):
         if 'shipping_mode' in meli_shipping_values:
             shipping_values['shipping_mode'] = meli_shipping_values['shipping_mode']
         return shipping_values
+    
+    @api.model
+    def _prepare_buyer_vals(self, meli_buyer_vals, document_number):
+        buyer_vals = {
+            'buyer_id': meli_buyer_vals['id'],
+            'nickname': meli_buyer_vals['nickname'],
+            'email': meli_buyer_vals['email'],
+            'phone': self.full_phone(meli_buyer_vals['phone']),
+            'alternative_phone': self.full_phone(meli_buyer_vals['alternative_phone']),
+            'first_name': meli_buyer_vals['first_name'],
+            'last_name': meli_buyer_vals['last_name'],
+            'billing_info': self.billing_info(meli_buyer_vals['billing_info']),
+            'document_number': document_number,
+        }
+        return buyer_vals
+    
+    @api.model
+    def _find_create_buyer(self, meli_buyer_vals, document_number):
+        BuyerModel = self.env['mercadolibre.buyers']
+        buyer_vals = self._prepare_buyer_vals(meli_buyer_vals, document_number)
+        buyer_find = BuyerModel.search([('buyer_id', '=', buyer_vals['buyer_id'])], limit=1)
+        if not buyer_find:
+            _logger.info("creating buyer: %s", str(buyer_vals))
+            buyer_find = BuyerModel.create(buyer_vals)
+        return buyer_find
+    
+    @api.model
+    def _prepare_partner_vals(self, meli_buyer_vals, document_number):
+        partner_vals = {
+            'name': "%s %s" % (meli_buyer_vals['first_name'], meli_buyer_vals['last_name']),
+            'street': 'no street',
+            'phone': self.full_phone(meli_buyer_vals['phone']),
+            'email': meli_buyer_vals['email'],
+            'meli_buyer_id': meli_buyer_vals['id'],
+            'document_number': document_number,
+            'vat': 'CL%s' % document_number,
+        }
+        partner_vals = self.env['res.partner'].process_fields_meli(partner_vals, meli_buyer_vals['billing_info'].get('doc_type') or 'RUT')
+        return partner_vals
+    
+    @api.model
+    def _find_create_partner(self, meli_buyer_vals, document_number):
+        partnerModel = self.env['res.partner']
+        partner_vals = self._prepare_partner_vals(meli_buyer_vals, document_number)
+        partner_find = partnerModel.search([('meli_buyer_id', '=', partner_vals['meli_buyer_id'])], limit=1)
+        if not partner_find and document_number:
+            partner_find = partnerModel.search([('document_number', '=', document_number)])
+        if not partner_find:
+            _logger.info("creating partner: %s", str(partner_vals))
+            partner_find = partnerModel.create(partner_vals)
+        return partner_find
+
+    @api.model
+    def _prepare_order_vals(self, meli_order_vals):
+        order_vals = {
+            'order_id': meli_order_vals["id"],
+            'status': meli_order_vals.get("status"),
+            'status_detail': meli_order_vals.get("status_detail"),
+            'total_amount': meli_order_vals.get("total_amount"),
+            'currency_id': meli_order_vals.get("currency_id"),
+            'date_created': meli_order_vals.get("date_created"),
+            'date_closed': meli_order_vals.get("date_closed"),
+        }
+        return order_vals
+    
+    @api.model
+    def _prepare_sale_order_vals(self, meli_order_vals, partner, pricelist):
+        sale_order_vals = {
+            'partner_id': partner.id,
+            'pricelist_id': pricelist.id,
+            'meli_status': meli_order_vals["status"],
+            'meli_status_detail': meli_order_vals["status_detail"] or '' ,
+            'meli_total_amount': meli_order_vals["total_amount"],
+            'meli_currency_id': meli_order_vals["currency_id"],
+            'meli_date_created': meli_order_vals["date_created"] or '',
+            'meli_date_closed': meli_order_vals["date_closed"] or '',
+        }
+        return sale_order_vals
+    
+    @api.model
+    def _find_product(self, meli_order_line_vals):
+        ProductTemplateModel = self.env['product.template']
+        ProductModel = self.env['product.product']
+        product_template = ProductTemplateModel.search([('meli_id', '=', meli_order_line_vals['item']['id'])], limit=1)
+        product_find = ProductModel.browse()
+        if product_template and product_template.product_variant_ids:
+            product_find = product_template.product_variant_ids[0]
+        #si hay informacion de variantes, tomar la variante especifica que se haya vendido
+        product_variant = ProductModel.browse()
+        if meli_order_line_vals['item'].get('variation_id'):
+            product_variant = product_template.product_variant_ids.filtered(lambda x: x.meli_id == str(meli_order_line_vals['item'].get('variation_id')))
+            if product_variant:
+                all_atr_name_meli = []
+                for attr in meli_order_line_vals['item'].get('variation_attributes', []):
+                    all_atr_name_meli.append(attr['value_name'])
+                product_find = product_variant
+                variants_names = ", ".join(all_atr_name_meli)
+        #en caso de no encontrar la variante especifica por el ID
+        #tratar de encontrarla segun los atributos de la variante
+        if not product_variant and meli_order_line_vals['item'].get('variation_attributes'):
+            all_atr_meli = set()
+            all_atr_name_meli = set()
+            for attr in meli_order_line_vals['item'].get('variation_attributes'):
+                all_atr_meli.add(attr['id'])
+                all_atr_name_meli.add(attr['value_name'].lower())
+            for product_variant in product_template.product_variant_ids:
+                all_atr = set()
+                all_atr_name = set()
+                for attribute in product_variant.attribute_value_ids:
+                    if not attribute.attribute_id.meli_id:
+                        continue
+                    all_atr.update(set(attribute.attribute_id.meli_id.split(',')))
+                    all_atr_name.add(attribute.name.lower())
+                if all_atr_meli.intersection(all_atr) and all_atr_name_meli == all_atr_name:
+                    product_find = product_variant
+                    variants_names = ", ".join(list(all_atr_name_meli))
+                    break
+        return product_find, variants_names
+
+    @api.model
+    def _prepare_order_line_vals(self, order, meli_order_line_vals, posting, product, variants_names):
+        order_line_vals = {
+            'order_id': order.id,
+            'posting_id': posting.id,
+            'order_item_id': meli_order_line_vals['item']['id'],
+            'order_item_title': "%s %s" % (meli_order_line_vals['item']['title'], ("(%s)" % variants_names) if variants_names else ''),
+            'order_item_category_id': meli_order_line_vals['item']['category_id'],
+            'unit_price': meli_order_line_vals['unit_price'],
+            'quantity': meli_order_line_vals['quantity'],
+            'currency_id': meli_order_line_vals['currency_id']
+        }
+        return order_line_vals
+        
+    @api.model
+    def _add_order_line(self, order, meli_order_lines, post_related, product_find, variants_names):
+        OrderItemModel = self.env['mercadolibre.order_items']
+        order_item_vals = self._prepare_order_line_vals(order, meli_order_lines, post_related, product_find, variants_names)
+        OrderLine = OrderItemModel.search([
+            ('order_item_id', '=', order_item_vals['order_item_id']),
+            ('order_id','=',order.id),
+        ], limit=1)
+        if not OrderLine:
+            OrderLine = OrderItemModel.create(order_item_vals)
+        else:
+            OrderLine.write(order_item_vals)
+        return OrderLine
+    
+    @api.model
+    def _prepare_sale_order_line_vals(self, sale_order, meli_order_line_vals, product, variants_names):
+        sale_order_line_vals = {
+            'order_id': sale_order.id,
+            'meli_order_item_id': meli_order_line_vals['item']['id'],
+            'price_unit': float(meli_order_line_vals['unit_price']),
+            'product_id': product.id,
+            'product_uom_qty': meli_order_line_vals['quantity'],
+            'product_uom': product.uom_id.id,
+            'name': "%s %s" % (meli_order_line_vals['item']['title'], ("(%s)" % variants_names) if variants_names else ''),
+        }
+        return sale_order_line_vals
+    
+    @api.model
+    def _add_sale_order_line(self, sale_order, meli_order_line_vals, product_find, variants_names):
+        SaleOrderLineModel = self.env['sale.order.line']
+        sale_order_line_vals = self._prepare_sale_order_line_vals(sale_order, meli_order_line_vals, product_find, variants_names)
+        SaleOrderLine = SaleOrderLineModel.search([
+            ('meli_order_item_id', '=', sale_order_line_vals['meli_order_item_id']),
+            ('order_id','=',sale_order.id),
+        ], limit=1)
+        if not SaleOrderLine:
+            SaleOrderLine = SaleOrderLineModel.create(sale_order_line_vals)
+        else:
+            SaleOrderLine.write(sale_order_line_vals)
+        return SaleOrderLine
+    
+    @api.model
+    def _prepare_payment_vals(self, order, meli_payment_vals):
+        payment_vals = {
+            'order_id': order.id,
+            'payment_id': meli_payment_vals['id'],
+            'transaction_amount': meli_payment_vals.get('transaction_amount') or 0,
+            'currency_id': meli_payment_vals.get('currency_id') or '',
+            'status': meli_payment_vals.get('status') or '',
+            'date_created': meli_payment_vals.get('date_created') or '',
+            'date_last_modified': meli_payment_vals.get('date_last_modified') or '',
+        }
+        return payment_vals
+    
+    @api.model
+    def _add_payment(self, order, meli_payment_vals):
+        Payments = self.env['mercadolibre.payments']
+        _logger.info(meli_payment_vals)
+        payment_vals = self._prepare_payment_vals(order, meli_payment_vals)
+        payment = Payments.search([
+            ('payment_id', '=', payment_vals['payment_id']),
+            ('order_id', '=', order.id),
+        ], limit=1)
+        if not payment:
+            payment = Payments.create(payment_vals)
+        else:
+            payment.write(payment_vals)
+        return payment
 
     def orders_update_order_json( self, data, context=None ):
-        _logger.info("orders_update_order_json > data: " + str(data) )
-        oid = data["id"]
         order_json = data["order_json"]
-        #print "data:" + str(data)
-        #_logger.info("orders_update_order_json > data[id]: " + oid + " order_json:" + order_json )
-        company = self.env.user.company_id
-        saleorder_obj = self.env['sale.order']
-        saleorderline_obj = self.env['sale.order.line']
-        product_obj = self.env['product.template']
-        pricelist_obj = self.env['product.pricelist']
-        respartner_obj = self.env['res.partner']
-        plistids = pricelist_obj.search([
-            ('currency_id','=','CLP'),
-            ('website_id','!=',False),
-            ], limit=1)
-        plistid = None
-        if plistids:
-            plistid = plistids
-        order_obj = self.env['mercadolibre.orders']
-        buyers_obj = self.env['mercadolibre.buyers']
-        posting_obj = self.env['mercadolibre.posting']
-        order_items_obj = self.env['mercadolibre.order_items']
-        payments_obj = self.env['mercadolibre.payments']
-        order = self.browse()
-        sorder = saleorder_obj.browse()
+        _logger.info("orders_update_order_json > data: " + str(order_json))
+        SaleOrderModel = self.env['sale.order']
+        PartnerModel = self.env['res.partner']
+        MeliOrderModel = self.env['mercadolibre.orders']
+        PostingModel = self.env['mercadolibre.posting']
+        pricelist = self.env['product.template']._get_pricelist_for_meli()
+        partner = PartnerModel.browse()
         notes = []
         need_review = False
-        # if id is defined, we are updating existing one
-        if (oid):
-            order = order_obj.browse(oid )
-            ##sorder = order_obj.browse(
-            sorder = saleorder_obj.browse(oid )
-        else:
-        #we search for existing order with same order_id => "id"
-            order_s = order_obj.search([ ('order_id','=',order_json['id']) ] )
-            if (order_s):
-                order = order_s
-            #    order = order_obj.browse(order_s[0] )
-
-            if order.sale_order_id:
-                sorder = order.sale_order_id
-            if not sorder and order:
-                sorder = saleorder_obj.search([('meli_order_id','=',order.id)])
-        order_fields = {
-            'order_id': '%i' % (order_json["id"]),
-            'status': order_json["status"],
-            'status_detail': order_json["status_detail"] or '' ,
-            'total_amount': order_json["total_amount"],
-            'currency_id': order_json["currency_id"],
-            'date_created': order_json["date_created"] or '',
-            'date_closed': order_json["date_closed"] or '',
-        }
-        #print "order:" + str(order)
+        meli_order = MeliOrderModel.search([('order_id','=',order_json['id']) ] )
+        sale_order = meli_order.sale_order_id
+        order_vals = self._prepare_order_vals(order_json)
         if 'buyer' in order_json:
             Buyer = order_json['buyer']
-            meli_buyer_fields = {
-                'name': Buyer['first_name']+' '+Buyer['last_name'],
-                'street': 'no street',
-                'phone': self.full_phone( Buyer['phone']),
-                'email': Buyer['email'],
-                'meli_buyer_id': Buyer['id'],
-            }
-            buyer_fields = {
-                'buyer_id': Buyer['id'],
-                'nickname': Buyer['nickname'],
-                'email': Buyer['email'],
-                'phone': self.full_phone( Buyer['phone']),
-                'alternative_phone': self.full_phone( Buyer['alternative_phone']),
-                'first_name': Buyer['first_name'],
-                'last_name': Buyer['last_name'],
-                'billing_info': self.billing_info(Buyer['billing_info']),
-            }
             document_number =False
             if Buyer['billing_info'].get('doc_number'):
                 document_number = Buyer['billing_info'].get('doc_number')
                 document_number = (re.sub('[^1234567890Kk]', '', str(document_number))).zfill(9).upper()
-                vat = 'CL%s' % document_number
-                document_number = '%s.%s.%s-%s' % (
-                    document_number[0:2], document_number[2:5],
-                    document_number[5:8], document_number[-1])
-                buyer_fields['document_number'] = document_number
-                meli_buyer_fields['document_number'] = document_number
-                meli_buyer_fields['vat'] = vat
-                meli_buyer_fields = respartner_obj.process_fields_meli(meli_buyer_fields, Buyer['billing_info'].get('doc_type') or 'RUT')
-            buyer_ids = buyers_obj.search([  ('buyer_id','=',buyer_fields['buyer_id'] ) ] )
-            buyer_id = 0
-            if not buyer_ids:
-                print "creating buyer:" + str(buyer_fields)
-                buyer_id = buyers_obj.create(buyer_fields)
-            else:
-                if (buyer_ids):
-                    buyer_id = buyer_ids
-                #if (len(buyer_ids)>0):
-                #      buyer_id = buyer_ids[0]
-
-            partner_ids = respartner_obj.search([('meli_buyer_id', '=', buyer_fields['buyer_id'])])
-            partner_id = 0
-            if not partner_ids and document_number:
-                partner_ids = respartner_obj.search([('document_number', '=', document_number)])
-            if not partner_ids:
-                #print "creating partner:" + str(meli_buyer_fields)
-                partner_id = respartner_obj.create(meli_buyer_fields)
-            else:
-                partner_id = partner_ids
-                #if (len(partner_ids)>0):
-                #    partner_id = partner_ids[0]
-            if buyer_id and partner_id and not buyer_id.partner_id:
-                buyer_id.partner_id = partner_id
-            if buyer_id:
-                order_fields['buyer'] = buyer_id.id
-        if (len(partner_ids)>0):
-            partner_id = partner_ids[0]
-        #process base order fields
-        meli_order_fields = {
-            'partner_id': partner_id.id,
-            'pricelist_id': plistid.id,
-            'meli_status': order_json["status"],
-            'meli_status_detail': order_json["status_detail"] or '' ,
-            'meli_total_amount': order_json["total_amount"],
-            'meli_currency_id': order_json["currency_id"],
-            'meli_date_created': order_json["date_created"] or '',
-            'meli_date_closed': order_json["date_closed"] or '',
-        }
+            buyer = self._find_create_buyer(Buyer, document_number)
+            partner = self._find_create_partner(Buyer, document_number)
+            if buyer and partner and not buyer.partner_id:
+                buyer.partner_id = partner
+            if buyer:
+                order_vals['buyer'] = buyer.id
+        #process base meli_order fields
+        sale_order_vals = self._prepare_sale_order_vals(order_json, partner, pricelist)
         if (order_json["shipping"]):
-            order_fields['shipping'] = self.pretty_json( id, order_json["shipping"] )
-            meli_order_fields['meli_shipping'] = self.pretty_json( id, order_json["shipping"] )
+            order_vals['shipping'] = self.pretty_json( id, order_json["shipping"] )
+            sale_order_vals['meli_shipping'] = self.pretty_json( id, order_json["shipping"] )
             shipping_values = self.prepare_values_shipping(order_json["shipping"])
-            order_fields.update(shipping_values)
-            meli_order_fields.update(shipping_values)
-        #create or update order
-        if (order and order.id):
-            _logger.info("Updating order: %s" % (order.id))
-            order.write( order_fields )
+            order_vals.update(shipping_values)
+            sale_order_vals.update(shipping_values)
+        #create or update meli_order
+        if (meli_order):
+            _logger.info("Updating meli orden: %s", meli_order.id)
+            meli_order.write(order_vals)
         else:
-            _logger.info("Adding new order: " )
-            _logger.info(order_fields)
-            print "creating order:" + str(order_fields)
-            order = order_obj.create( (order_fields))
+            _logger.info("Adding new meli order: %s", str(order_vals))
+            meli_order = MeliOrderModel.create(order_vals)
 
-        meli_order_fields['meli_order_id'] = order.id
-        if (sorder and sorder.id):
-            _logger.info("Updating sale.order: %s" % (sorder.id))
-            sorder.write( meli_order_fields )
+        sale_order_vals['meli_order_id'] = meli_order.id
+        if (sale_order):
+            _logger.info("Updating sale.order: %s", sale_order.id)
+            sale_order.write(sale_order_vals)
         else:
             _logger.info("Adding new sale.order: " )
-            _logger.info(meli_order_fields)
-            #print "creating sale order:" + str(meli_order_fields)
-            sorder = saleorder_obj.create((meli_order_fields))
-        order.write({'sale_order_id': sorder.id})
-        #check error
-        if not order:
-            _logger.error("Error adding order. " )
-            print "Error adding order"
-            return {}
-        #check error
-        if not sorder:
-            _logger.error("Error adding sale.order. " )
-            print "Error adding sale.order"
-            return {}
+            _logger.info(sale_order_vals)            
+            sale_order = SaleOrderModel.create(sale_order_vals)
+        meli_order.write({'sale_order_id': sale_order.id})
         #update internal fields (items, payments, buyers)
         if 'order_items' in order_json:
-            items = order_json['order_items']
-            _logger.info( items )
-            print "order items" + str(items)
+            notes = []
+            need_review = False
             cn = 0
-            for Item in items:
+            for Item in order_json['order_items']:
                 cn = cn + 1
                 _logger.info(cn)
-                _logger.info(Item )
-                product_related = product_obj.search([('meli_id','=',Item['item']['id'])], limit=1)
-                post_related = posting_obj.search([('meli_id','=',Item['item']['id'])])
-                post_related_obj = ''
-                product_related_obj = ''
-                product_related_obj_id = False
-                if len(post_related):
-                    post_related_obj = post_related
-                    _logger.info( post_related_obj )
-                    #if (post_related[0]):
-                    #    post_related_obj = post_related[0]
-                else:
+                _logger.info(Item)
+                post_related = PostingModel.search([('meli_id','=',Item['item']['id'])])
+                if not post_related:
                     notes.append("*Producto: %s con ID: %s no existe" % (Item['item']['title'], Item['item']['id']))
                     need_review = True
                     continue
-                variants_names = ""
-                if len(product_related):
-                    product_related_obj = product_related.product_variant_ids[0]
-                    #si hay informacion de variantes, tomar la variante especifica que se haya vendido
-                    product_variant = False
-                    if Item['item'].get('variation_id'):
-                        product_variant = product_related.product_variant_ids.filtered(lambda x: x.meli_id == str(Item['item'].get('variation_id')))
-                        if product_variant:
-                            all_atr_name_meli = []
-                            for attr in Item['item'].get('variation_attributes', []):
-                                all_atr_name_meli.append(attr['value_name'])
-                            product_related_obj = product_variant
-                            variants_names = ", ".join(all_atr_name_meli)
-                    if not product_variant and Item['item'].get('variation_attributes'):
-                        all_atr_meli = set()
-                        all_atr_name_meli = set()
-                        for attr in Item['item'].get('variation_attributes'):
-                            all_atr_meli.add(attr['id'])
-                            all_atr_name_meli.add(attr['value_name'].lower())
-                        for product_variant in product_related.product_variant_ids:
-                            all_atr = set()
-                            all_atr_name = set()
-                            for attribute in product_variant.attribute_value_ids:
-                                if not attribute.attribute_id.meli_id:
-                                    continue
-                                all_atr.update(set(attribute.attribute_id.meli_id.split(',')))
-                                all_atr_name.add(attribute.name.lower())
-                            if all_atr_meli.intersection(all_atr) and all_atr_name_meli == all_atr_name:
-                                product_related_obj = product_variant
-                                variants_names = ", ".join(list(all_atr_name_meli))
-                                break
-                    _logger.info( product_related_obj )
-                    #if (product_related[0]):
-                    #    product_related_obj_id = product_related[0]
-                    #    product_related_obj = product_obj.browse( product_related_obj_id)
-                    #    _logger.info("product_related:")
-                    #    _logger.info( product_related_obj )
-                else:
+                product_find, variants_names = self._find_product(Item)
+                if not product_find:
                     notes.append("*Producto: %s con ID: %s no existe" % (Item['item']['title'], Item['item']['id']))
                     need_review = True
                     continue
-                order_item_fields = {
-                    'order_id': order.id,
-                    'posting_id': post_related_obj.id,
-                    'order_item_id': Item['item']['id'],
-                    'order_item_title': "%s %s" % (Item['item']['title'], ("(%s)" % variants_names) if variants_names else ''),
-                    'order_item_category_id': Item['item']['category_id'],
-                    'unit_price': Item['unit_price'],
-                    'quantity': Item['quantity'],
-                    'currency_id': Item['currency_id']
-                }
-                order_item_ids = order_items_obj.search( [('order_item_id','=',order_item_fields['order_item_id']),('order_id','=',order.id)] )
-                _logger.info( order_item_fields )
-                if not order_item_ids:
-                    #print "order_item_fields: " + str(order_item_fields)
-                    order_item_ids = order_items_obj.create( ( order_item_fields ))
-                else:
-                    order_item_ids.write( ( order_item_fields ) )
-                saleorderline_item_fields = {
-                    'company_id': company.id,
-                    'order_id': sorder.id,
-                    'meli_order_item_id': Item['item']['id'],
-                    'price_unit': float(Item['unit_price']),
-#                    'price_total': float(Item['unit_price']) * float(Item['quantity']),
-                    'product_id': product_related_obj.id,
-                    'product_uom_qty': Item['quantity'],
-                    'product_uom': product_related_obj.uom_id.id,
-                    'name': "%s %s" % (Item['item']['title'], ("(%s)" % variants_names) if variants_names else ''),
-#                    'customer_lead': float(0)
-                }
-                saleorderline_item_ids = saleorderline_obj.search( [('meli_order_item_id','=',saleorderline_item_fields['meli_order_item_id']),('order_id','=',sorder.id)] )
-                _logger.info( saleorderline_item_fields )
-                if not saleorderline_item_ids:
-                    #print "saleorderline_item_fields: " + str(saleorderline_item_fields)
-                    saleorderline_item_ids = saleorderline_obj.create( ( saleorderline_item_fields ))
-                else:
-                    saleorderline_item_ids.write( ( saleorderline_item_fields ) )
+                self._add_order_line(meli_order, Item, post_related, product_find, variants_names)
+                self._add_sale_order_line(sale_order, Item, product_find, variants_names)
         if 'payments' in order_json:
-            payments = order_json['payments']
-            _logger.info( payments )
-            cn = 0
-            for Payment in payments:
-                cn = cn + 1
-                _logger.info(cn)
-                _logger.info(Payment )
-                payment_fields = {
-                    'order_id': order.id,
-                    'payment_id': Payment['id'],
-                    'transaction_amount': Payment['transaction_amount'] or '',
-                    'currency_id': Payment['currency_id'] or '',
-                    'status': Payment['status'] or '',
-                    'date_created': Payment['date_created'] or '',
-                    'date_last_modified': Payment['date_last_modified'] or '',
-                }
-                payment_ids = payments_obj.search( [  ('payment_id','=',payment_fields['payment_id']),
-                                                            ('order_id','=',order.id ) ] )
-                if not payment_ids:
-                    payment_ids = payments_obj.create( ( payment_fields ))
-                else:
-                    payment_ids.write( ( payment_fields ) )
-        if order:
-            order.write({
+            for meli_payment_vals in order_json['payments']:
+                self._add_payment(meli_order, meli_payment_vals)
+        if meli_order:
+            meli_order.write({
                 'need_review': need_review,
                 'note': "".join(notes),
             })
-            return_id = self.env['mercadolibre.orders'].update
-        return {}
+        return meli_order
 
     def orders_update_order( self, context=None ):
         meli_util_model = self.env['meli.util']

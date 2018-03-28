@@ -717,7 +717,10 @@ class ProductTemplate(models.Model):
     
     @api.model
     def _get_pricelist_for_meli(self):
-        pricelist = self.env['product.pricelist'].search([('website_id','!=',False)], limit=1)
+        pricelist = self.env['product.pricelist'].search([
+            ('currency_id','=','CLP'),
+            ('website_id','!=',False),
+        ], limit=1)
         if not pricelist:
             pricelist = self.env['product.pricelist'].search([], limit=1)
         return pricelist
