@@ -238,8 +238,9 @@ class mercadolibre_orders(models.Model):
         company = self.env.user.company_id
         sale_order_vals = self._prepare_sale_order_vals(pricelist, company)
         if (sale_order):
-            _logger.info("Updating sale.order: %s", sale_order.id)
-            sale_order.write(sale_order_vals)
+            if sale_order.state not in ('sale', 'done', 'cancel'):
+                _logger.info("Updating sale.order: %s", sale_order.id)
+                sale_order.write(sale_order_vals)
         else:
             _logger.info("Adding new sale.order: " )
             _logger.info(sale_order_vals)            
@@ -544,6 +545,7 @@ class mercadolibre_orders(models.Model):
             'amount': self.total_amount,
             'payment_method_id': payment_journal.inbound_payment_method_ids.id,
             'invoice_ids': [(6, 0, [invoice.id])],
+            'payment_date': self.date_closed,
         }
         return payment_vals
         
