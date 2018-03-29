@@ -979,10 +979,9 @@ class ProductTemplate(models.Model):
     def action_send_products_to_meli(self):
         limit_meli = int(self.env['ir.config_parameter'].get_param('meli.product.limit', '1000').strip())
         products = self.with_context(return_message_list=True).search([
-            ('website_published','=',True),
+            ('meli_pub','=',True),
             ('meli_id','=',False),
             ], limit=limit_meli)
-        products.write({'meli_pub': True})
         products.action_sincronice_product_data_ml()
         message_list = []
         message = []

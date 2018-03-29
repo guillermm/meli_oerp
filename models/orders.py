@@ -256,6 +256,7 @@ class mercadolibre_orders(models.Model):
         ProductModel = self.env['product.product']
         product_template = ProductTemplateModel.search([('meli_id', '=', meli_order_line_vals['item']['id'])], limit=1)
         product_find = ProductModel.browse()
+        variants_names = ""
         if product_template and product_template.product_variant_ids:
             product_find = product_template.product_variant_ids[0]
         #si hay informacion de variantes, tomar la variante especifica que se haya vendido
