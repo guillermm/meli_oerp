@@ -7,7 +7,7 @@
 			<field name="inherit_id" ref="base.view_partner_form" />
 			<field name="arch" type="xml">
 				<xpath expr="//notebook" position="inside">
-					<page string="MercadoLibre">
+					<page string="MercadoLibre" groups="meli_oerp.group_meli_user">
 						<group>
 							<field name="meli_buyer_id" />
 						</group>

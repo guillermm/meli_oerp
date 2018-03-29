@@ -110,7 +110,7 @@
 			sequence="9" />
 
 		<menuitem id="menu_meli_postings" action="action_meli_postings_tree"
-			parent="menu_meli" name="Postings" />
+			parent="menu_meli" name="Postings" groups="base.group_system" />
 
 	</data>
 </odoo>

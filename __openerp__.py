@@ -21,6 +21,8 @@
         'website_sale',
     ],
     'data': [
+        'security/groups.xml',
+        'security/ir.model.access.csv',
         'data/parameters_data.xml',
         'data/cron_jobs.xml',
         'data/email_template_data.xml',

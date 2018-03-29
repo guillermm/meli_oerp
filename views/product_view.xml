@@ -8,13 +8,14 @@
 			<field name="inherit_id" ref="product.product_template_form_view" />
 			<field name="arch" type="xml">
 				<xpath expr="//div[@name='options']" position="inside">
-					<div>
+					<div groups="meli_oerp.group_meli_user">
 						<field name="meli_pub" />
 						<label for="meli_pub" />
 					</div>
 				</xpath>
 				<xpath expr="//page[@name='notes']" position="after">
-					<page string="MercadoLibre" attrs="{'invisible': [('meli_pub','=',False)]}">
+					<page string="MercadoLibre" attrs="{'invisible': [('meli_pub','=',False)]}"
+						groups="meli_oerp.group_meli_user">
 						<div class="oe_button_box" name="button_box_mel">
 							<button name='action_category_predictor' type="object"
 								string="Sugerir Categoria MELI" class="oe_stat_button" icon="fa-refresh"
@@ -99,7 +100,7 @@
 			<field name="inherit_id" ref="product.product_template_tree_view"/>
 			<field name="arch" type="xml">
 				<field name="default_code" position="after">
-					<field name="meli_id" />
+					<field name="meli_id" groups="meli_oerp.group_meli_user" />
 				</field>
 			</field>
 		</record>
@@ -110,7 +111,7 @@
 			<field name="inherit_id" ref="product.product_product_tree_view"/>
 			<field name="arch" type="xml">
 				<field name="default_code" position="after">
-					<field name="meli_id" />
+					<field name="meli_id" groups="meli_oerp.group_meli_user" />
 				</field>
 			</field>
 		</record>

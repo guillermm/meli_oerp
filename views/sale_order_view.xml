@@ -8,7 +8,7 @@
 			<field name="inherit_id" ref="sale.view_quotation_tree" />
 			<field name="arch" type="xml">
 				<field name="name" position="after">
-					<field name="meli_order_id" />
+					<field name="meli_order_id" groups="meli_oerp.group_meli_user"/>
 				</field>
 			</field>
 		</record>
@@ -19,7 +19,7 @@
 			<field name="inherit_id" ref="sale.view_order_tree" />
 			<field name="arch" type="xml">
 				<field name="name" position="after">
-					<field name="meli_order_id" />
+					<field name="meli_order_id" groups="meli_oerp.group_meli_user"/>
 				</field>
 			</field>
 		</record>
@@ -30,7 +30,7 @@
 			<field name="inherit_id" ref="sale.view_order_form" />
 			<field name="arch" type="xml">
 				<xpath expr="//notebook" position="inside">
-					<page string="MercadoLibre">
+					<page string="MercadoLibre" groups="meli_oerp.group_meli_user">
 						<group>
 							<group>
 								<field name="meli_order_id" options="{'no_create': True}" />
