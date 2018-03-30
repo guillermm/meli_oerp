@@ -296,6 +296,7 @@ class ProductTemplate(models.Model):
         if "sub_status" in rjson:
             if len(rjson["sub_status"]) and rjson["sub_status"][0]=='deleted':
                 product.write({ 'meli_id': '' })
+                product.product_variant_ids.write({ 'meli_id': '' })
         return {}
 
     def product_meli_upload_image( self ):
@@ -918,7 +919,7 @@ class ProductTemplate(models.Model):
     @api.multi
     def _get_meli_image_variants(self, atribute_values):
         picture_ids = []
-        if not atribute_values and self.meli_imagen_id:
+        if (not atribute_values or len(self.product_image_ids)<=1) and self.meli_imagen_id:
             picture_ids.append(self.meli_imagen_id)
         for product_image in self.product_image_ids:
             if not product_image.meli_id:
