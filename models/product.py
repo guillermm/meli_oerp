@@ -327,8 +327,6 @@ class ProductTemplate(models.Model):
             #asociar imagen a producto
             if product.meli_id:
                 response = meli.post("/items/"+product.meli_id+"/pictures", { 'id': rjson["id"] }, { 'access_token': meli.access_token } )
-            else:
-                return { 'status': 'warning', 'message': 'uploaded but not assigned' }
         return { 'status': 'success', 'message': 'uploaded and assigned' }
 
     def product_meli_upload_multi_images( self  ):
@@ -706,8 +704,9 @@ class ProductTemplate(models.Model):
             #recorrer las imagenes y publicarlas
             multi_images_ids = product.product_meli_upload_multi_images()
         qty_available = self._get_meli_quantity_available()
+        product.write({'meli_title': product.get_title_for_meli()})
         body = {
-            "title": product.get_title_for_meli(),
+            "title": product.meli_title,
             "warranty": product.meli_warranty or '',
             "video_id": product.meli_video  or '',
         }
