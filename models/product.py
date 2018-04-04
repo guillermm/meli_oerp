@@ -920,7 +920,8 @@ class ProductTemplate(models.Model):
     @api.multi
     def _get_meli_image_variants(self, atribute_values):
         picture_ids = []
-        if (not atribute_values or len(self.product_image_ids)<=1) and self.meli_imagen_id:
+        images_by_attribute = self.product_image_ids.filtered(lambda x: x.product_attribute_id)
+        if (not atribute_values or len(self.product_image_ids)<=1) or not images_by_attribute and self.meli_imagen_id:
             picture_ids.append(self.meli_imagen_id)
         for product_image in self.product_image_ids:
             if not product_image.meli_id:
