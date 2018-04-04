@@ -39,6 +39,7 @@
 									<field name="mercadolibre_cron_get_questions" />
 									<field name="mercadolibre_cron_get_update_products" />
 									<field name="mercadolibre_create_website_categories" />
+									<field name="mercadolibre_validate_attributes_categories" />
 								</group>
 							</group>
 							<group name="Actions">

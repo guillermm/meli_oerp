@@ -297,6 +297,9 @@ class ProductTemplate(models.Model):
             if len(rjson["sub_status"]) and rjson["sub_status"][0]=='deleted':
                 product.write({ 'meli_id': '' })
                 product.product_variant_ids.write({ 'meli_id': '' })
+        if ML_status == 'closed' and product.meli_id:
+            product.write({ 'meli_id': '' })
+            product.product_variant_ids.write({ 'meli_id': '' })
         return {}
 
     def product_meli_upload_image( self ):
@@ -496,6 +499,16 @@ class ProductTemplate(models.Model):
                     message_description = ""
                     message_list.append((message_text, message_description))
                     _logger.error(error_msg)
+        if company.mercadolibre_validate_attributes_categories:
+            attribute_talle = product.meli_category.attribute_ids.filtered(lambda x: x.code in ['73002'])
+            attribute_color = product.meli_category.attribute_ids.filtered(lambda x: x.code in ['73001','83000'])
+            if not attribute_color or not attribute_talle:
+                message_text = "La categoria de Meli seleccionada no tiene atributos de talla y color, verifique producto: %s." % product.display_name
+                message_description = ""
+                message_list.append((message_text, message_description))
+                if return_message_list:
+                    return message_list
+                return warningobj.info( title='MELI WARNING', message=message_text, message_html=message_description)
         #publicando multiples imagenes
         multi_images_ids = {}
         if (product.product_image_ids):
