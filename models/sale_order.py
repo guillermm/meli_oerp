@@ -22,8 +22,8 @@ class SaleOrder(models.Model):
                                     ("cancelled","Cancelado")], string='Order Status')
 
     meli_status_detail = fields.Text(string='Status detail, in case the order was cancelled.')
-    meli_date_created = fields.Date('Creation date')
-    meli_date_closed = fields.Date('Closing date')
+    meli_date_created = fields.Datetime('Creation date')
+    meli_date_closed = fields.Datetime('Closing date')
 
 #        'meli_order_items': fields.one2many('mercadolibre.order_items','order_id','Order Items' ),
 #        'meli_payments': fields.one2many('mercadolibre.payments','order_id','Payments' ),

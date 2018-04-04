@@ -52,7 +52,7 @@ class MercadolibrePosting(models.Model):
     _name = "mercadolibre.posting"
     _description = "Posting en MercadoLibre"
     
-    posting_date = fields.Date('Fecha del posting')
+    posting_date = fields.Datetime('Fecha del posting')
     name = fields.Char('Name')
     meli_id = fields.Char('Id del item asignado por Meli', size=256)
     product_id = fields.Many2one('product.product','product_id')

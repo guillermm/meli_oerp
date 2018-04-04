@@ -31,7 +31,7 @@ class MercadolibreQuestions(models.Model):
 
 	posting_id = fields.Many2one("mercadolibre.posting","Posting")
 	question_id = fields.Char('Question Id')
-	date_created = fields.Date('Creation date')
+	date_created = fields.Datetime('Creation date')
 	item_id = fields.Char(string="Item ID",size=255)
 	seller_id = fields.Char(string="Seller ID",size=255)
 	text = fields.Text("Question Text")
@@ -42,7 +42,7 @@ class MercadolibreQuestions(models.Model):
 		("UNDER_REVIEW","The item is under review and the question too."),
 		("BANNED","The item was banned")
 		], string='Question Status')
-	answer_date_created = fields.Date('Answer creation date')
+	answer_date_created = fields.Datetime('Answer creation date')
 	answer_status = fields.Selection([
 		("ACTIVE","Active"),
 		("DISABLED","Disabled"),

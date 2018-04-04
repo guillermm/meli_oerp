@@ -19,16 +19,24 @@
 #
 ##############################################################################
 
+import os
 import logging
 import requests
+from datetime import datetime
+
+_logger = logging.getLogger(__name__)
+
+try:
+    import csv
+except ImportError:
+    csv = False
+    _logger.error('This module needs csv. Please install csv on your system')
 
 from odoo import fields, osv, models, api
 from odoo.tools.translate import _
 from odoo import tools
 
 from .meli_oerp_config import REDIRECT_URI
-
-_logger = logging.getLogger(__name__)
 
 class ResCompany(models.Model):
     
@@ -169,7 +177,7 @@ class ResCompany(models.Model):
         _logger.info('company.meli_query_orders() ')
         orders_obj = self.env['mercadolibre.orders']
         result = orders_obj.orders_query_recent()
-        return {}
+        return result
 
     @api.multi
     def meli_query_products(self):
@@ -293,5 +301,16 @@ class ResCompany(models.Model):
         company = self.env.user.company_id
         if (company.mercadolibre_cron_get_orders):
             _logger.info("obteniendo Pedidos desde Meli")
-            self.meli_query_orders()
+            message_list = self.meli_query_orders()
+            if message_list and csv:
+                file_path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'logs'))
+                if not os.path.exists(file_path):
+                    os.makedirs(file_path)
+                file_path = os.path.join(file_path, "crear_pedidos_meli_%s.csv" % fields.Datetime.context_timestamp(self, datetime.now()).strftime('%Y_%m_%d_%H_%M_%S'))
+                fp = open(file_path,'wb')
+                csv_file = csv.writer(fp, quotechar='"', quoting=csv.QUOTE_ALL)
+                csv_file.writerow(['Mensaje', 'Detalle'])
+                for line in message_list:
+                    csv_file.writerow([line[0], line[1]])
+                fp.close()
         return True

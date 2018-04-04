@@ -22,6 +22,7 @@
 import os
 import re
 import json
+import pytz
 import logging
 from datetime import datetime
 _logger = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ except ImportError:
 
 from odoo import fields, osv, models, api, tools
 import odoo.addons.decimal_precision as dp
+from odoo.tools import DEFAULT_SERVER_DATETIME_FORMAT as DTF
 
 #https://api.mercadolibre.com/questions/search?item_id=MLA508223205
 
@@ -56,8 +58,8 @@ class mercadolibre_orders(models.Model):
         ("cancelled","Cancelado"), #The order has not completed by some reason.
     ], string='Order Status')
     status_detail = fields.Text(string='Status detail, in case the order was cancelled.')
-    date_created = fields.Date('Creation date')
-    date_closed = fields.Date('Closing date')
+    date_created = fields.Datetime('Creation date')
+    date_closed = fields.Datetime('Closing date')
     order_items = fields.One2many('mercadolibre.order_items','order_id','Order Items' )
     payments = fields.One2many('mercadolibre.payments','order_id','Payments' )
     shipping = fields.Text(string="Shipping")
@@ -110,6 +112,20 @@ class mercadolibre_orders(models.Model):
             if phone_json['extension']:
                 full_phone+= phone_json['extension']
         return full_phone
+    
+    def convert_to_datetime(self, date_str):
+        if not date_str:
+            return False
+        date_str = date_str.replace('T', ' ')
+        date_convert = fields.Datetime.from_string(date_str)
+        fields_model = self.env['ir.fields.converter']
+        from_zone = fields_model._input_tz()
+        to_zone = pytz.UTC
+        #si no hay informacion de zona horaria, establecer la zona horaria
+        if not date_convert.tzinfo:
+            date_convert = from_zone.localize(date_convert)
+        date_convert = date_convert.astimezone(to_zone)
+        return date_convert
 
     def pretty_json( self, ids, data, indent=0, context=None ):
         return json.dumps( data, sort_keys=False, indent=4 )
@@ -193,8 +209,8 @@ class mercadolibre_orders(models.Model):
             'status_detail': meli_order_vals.get("status_detail"),
             'total_amount': meli_order_vals.get("total_amount"),
             'currency_id': meli_order_vals.get("currency_id"),
-            'date_created': meli_order_vals.get("date_created"),
-            'date_closed': meli_order_vals.get("date_closed"),
+            'date_created': self.convert_to_datetime(meli_order_vals.get("date_created")).strftime(DTF),
+            'date_closed': self.convert_to_datetime(meli_order_vals.get("date_closed")).strftime(DTF),
         }
         return order_vals
     
@@ -354,8 +370,8 @@ class mercadolibre_orders(models.Model):
             'transaction_amount': meli_payment_vals.get('transaction_amount') or 0,
             'currency_id': meli_payment_vals.get('currency_id') or '',
             'status': meli_payment_vals.get('status') or '',
-            'date_created': meli_payment_vals.get('date_created') or '',
-            'date_last_modified': meli_payment_vals.get('date_last_modified') or '',
+            'date_created': self.convert_to_datetime(meli_payment_vals.get('date_created')).strftime(DTF),
+            'date_last_modified': self.convert_to_datetime(meli_payment_vals.get('date_last_modified')).strftime(DTF),
         }
         return payment_vals
     
@@ -391,6 +407,13 @@ class mercadolibre_orders(models.Model):
             if Buyer['billing_info'].get('doc_number'):
                 document_number = Buyer['billing_info'].get('doc_number')
                 document_number = (re.sub('[^1234567890Kk]', '', str(document_number))).zfill(9).upper()
+            if not document_number:
+                msj = "*Cliente: %s %s con ID: %s no tiene Informacion tributaria(RUT, Tipo de documento)" % \
+                    (Buyer.get('first_name'), Buyer.get('last_name'), Buyer.get('id'))
+                notes.append(("ERROR Creando Cliente", msj))
+                need_review = True
+                _logger.error(msj)
+                return meli_order, notes
             buyer = self._find_create_buyer(Buyer, document_number)
             partner = self._find_create_partner(Buyer, document_number)
             order_vals['buyer'] = buyer.id
@@ -437,7 +460,7 @@ class mercadolibre_orders(models.Model):
             'need_review': need_review,
             'note': "".join(notes),
         })
-        return meli_order
+        return meli_order, notes
 
     def orders_update_order( self, context=None ):
         meli_util_model = self.env['meli.util']
@@ -461,6 +484,7 @@ class mercadolibre_orders(models.Model):
         offset_next = 0
         company = self.env.user.company_id
         meli = meli_util_model.get_new_instance(company)
+        message_list = []
         orders_query = "/orders/search?seller="+company.mercadolibre_seller_id+"&sort=date_desc"
         if (offset):
             orders_query = orders_query + "&offset="+str(offset).strip()
@@ -471,7 +495,7 @@ class mercadolibre_orders(models.Model):
             _logger.error( orders_json["error"] )
             if (orders_json["message"]=="invalid_token"):
                 _logger.error( orders_json["message"] )
-            return {}
+            return message_list
         _logger.info( orders_json )
         #testing with json:
         if (True==False):
@@ -482,7 +506,7 @@ class mercadolibre_orders(models.Model):
         if "paging" in orders_json:
             if "total" in orders_json["paging"]:
                 if (orders_json["paging"]["total"]==0):
-                    return {}
+                    return message_list
                 else:
                     if (orders_json["paging"]["total"]==orders_json["paging"]["limit"]):
                         offset_next = offset + orders_json["paging"]["limit"]
@@ -491,14 +515,14 @@ class mercadolibre_orders(models.Model):
                 if order_json:
                     _logger.info( order_json )
                     pdata = {"id": False, "order_json": order_json}
-                    self.orders_update_order_json( pdata )
+                    meli_order, message_list = self.orders_update_order_json(pdata)
         if (offset_next>0):
-            self.orders_query_iterate(offset_next)
-        return {}
+            message_list.extend(self.orders_query_iterate(offset_next))
+        return message_list
 
     def orders_query_recent( self ):
-        self.orders_query_iterate( 0 )
-        return {}
+        res = self.orders_query_iterate(0)
+        return res
     
     @api.one
     def get_tag_delivery(self):
@@ -632,8 +656,8 @@ class MercadolibrePayments(models.Model):
     transaction_amount = fields.Char('Transaction Amount')
     currency_id = fields.Char(string='Currency')
     status = fields.Char(string='Payment Status')
-    date_created = fields.Date('Creation date')
-    date_last_modified = fields.Date('Modification date')
+    date_created = fields.Datetime('Creation date')
+    date_last_modified = fields.Datetime('Modification date')
 
 class MercadolibreBuyers(models.Model):
     
