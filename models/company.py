@@ -135,6 +135,7 @@ class ResCompany(models.Model):
     mercadolibre_cron_get_questions = fields.Boolean(string='Cron Get Questions')
     mercadolibre_cron_get_update_products = fields.Boolean(string='Cron Update Products')
     mercadolibre_create_website_categories = fields.Boolean(string='Create Website Categories')
+    meli_pricelist_id = fields.Many2one('product.pricelist', u'Tarifa de Venta para MELI')
 
     #'mercadolibre_login': fields.selection( [ ("unknown", "Desconocida"), ("logged","Abierta"), ("not logged","Cerrada")],string='Estado de la sesión'), )
 
