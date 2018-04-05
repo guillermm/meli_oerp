@@ -56,6 +56,8 @@
 									attrs="{'invisible':[('mercadolibre_state','=',True)]}" />
 								<button name='meli_import_categories' type="object"
 									string="Iniciar importación de categorías en MLA" attrs="{'invisible':[('mercadolibre_state','=',True)]}" />
+								<button name='action_get_all_campaign' type="object"
+									string="Obtener Campañas" attrs="{'invisible':[('mercadolibre_state','=',True)]}" />
 							</group>
 						</page>
 					</notebook>

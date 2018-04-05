@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import pytz
+
 from odoo import models, api, fields
 import odoo.addons.decimal_precision as dp
 from odoo.tools.translate import _
@@ -31,3 +33,17 @@ class MeliUtil(models.AbstractModel):
             "url": url_login_meli,
             "target": "self",
         }
+        
+    def convert_to_datetime(self, date_str):
+        if not date_str:
+            return False
+        date_str = date_str.replace('T', ' ')
+        date_convert = fields.Datetime.from_string(date_str)
+        fields_model = self.env['ir.fields.converter']
+        from_zone = fields_model._input_tz()
+        to_zone = pytz.UTC
+        #si no hay informacion de zona horaria, establecer la zona horaria
+        if not date_convert.tzinfo:
+            date_convert = from_zone.localize(date_convert)
+        date_convert = date_convert.astimezone(to_zone)
+        return date_convert

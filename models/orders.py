@@ -22,7 +22,6 @@
 import os
 import re
 import json
-import pytz
 import logging
 from datetime import datetime
 _logger = logging.getLogger(__name__)
@@ -112,20 +111,6 @@ class mercadolibre_orders(models.Model):
             if phone_json['extension']:
                 full_phone+= phone_json['extension']
         return full_phone
-    
-    def convert_to_datetime(self, date_str):
-        if not date_str:
-            return False
-        date_str = date_str.replace('T', ' ')
-        date_convert = fields.Datetime.from_string(date_str)
-        fields_model = self.env['ir.fields.converter']
-        from_zone = fields_model._input_tz()
-        to_zone = pytz.UTC
-        #si no hay informacion de zona horaria, establecer la zona horaria
-        if not date_convert.tzinfo:
-            date_convert = from_zone.localize(date_convert)
-        date_convert = date_convert.astimezone(to_zone)
-        return date_convert
 
     def pretty_json( self, ids, data, indent=0, context=None ):
         return json.dumps( data, sort_keys=False, indent=4 )
@@ -203,14 +188,15 @@ class mercadolibre_orders(models.Model):
 
     @api.model
     def _prepare_order_vals(self, meli_order_vals):
+        meli_util = self.env['meli.util']
         order_vals = {
             'order_id': meli_order_vals["id"],
             'status': meli_order_vals.get("status"),
             'status_detail': meli_order_vals.get("status_detail"),
             'total_amount': meli_order_vals.get("total_amount"),
             'currency_id': meli_order_vals.get("currency_id"),
-            'date_created': self.convert_to_datetime(meli_order_vals.get("date_created")).strftime(DTF),
-            'date_closed': self.convert_to_datetime(meli_order_vals.get("date_closed")).strftime(DTF),
+            'date_created': meli_util.convert_to_datetime(meli_order_vals.get("date_created")).strftime(DTF),
+            'date_closed': meli_util.convert_to_datetime(meli_order_vals.get("date_closed")).strftime(DTF),
         }
         return order_vals
     
@@ -364,14 +350,15 @@ class mercadolibre_orders(models.Model):
     
     @api.model
     def _prepare_payment_vals(self, order, meli_payment_vals):
+        meli_util = self.env['meli.util']
         payment_vals = {
             'order_id': order.id,
             'payment_id': meli_payment_vals['id'],
             'transaction_amount': meli_payment_vals.get('transaction_amount') or 0,
             'currency_id': meli_payment_vals.get('currency_id') or '',
             'status': meli_payment_vals.get('status') or '',
-            'date_created': self.convert_to_datetime(meli_payment_vals.get('date_created')).strftime(DTF),
-            'date_last_modified': self.convert_to_datetime(meli_payment_vals.get('date_last_modified')).strftime(DTF),
+            'date_created': meli_util.convert_to_datetime(meli_payment_vals.get('date_created')).strftime(DTF),
+            'date_last_modified': meli_util.convert_to_datetime(meli_payment_vals.get('date_last_modified')).strftime(DTF),
         }
         return payment_vals
     

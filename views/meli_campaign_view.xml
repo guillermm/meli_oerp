@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+	<data>
+
+		<record id="meli_campaign_tree_view" model="ir.ui.view">
+			<field name="name">meli.campaign.tree</field>
+			<field name="model">meli.campaign</field>
+			<field name="arch" type="xml">
+				<tree create="0" edit="0" delete="0">
+					<field name="meli_id" />
+					<field name="name" />
+					<field name="date_from" />
+					<field name="date_to" />
+					<field name="state" />
+				</tree>
+			</field>
+		</record>
+
+		<record id="meli_campaign_form_view" model="ir.ui.view">
+			<field name="name">meli.campaign.form</field>
+			<field name="model">meli.campaign</field>
+			<field name="arch" type="xml">
+				<form create="0" edit="0" delete="0">
+					<header>
+						<field name="state" widget="statusbar" />
+					</header>
+					<sheet>
+						<div class="oe_button_box" name="button_box">
+							<button name="toggle_active" type="object" class="oe_stat_button"
+								icon="fa-check">
+								<field name="active" widget="boolean_button" options="{'terminology': 'active'}" />
+							</button>
+						</div>
+						<group>
+							<group>
+								<field name="name" />
+								<field name="date_from" />
+								<field name="date_to" />
+							</group>
+							<group>
+								<field name="meli_id" />
+								<field name="offers_reception_deadline" />
+							</group>
+						</group>
+						<notebook colspan="2">
+							<page string="Condiciones">
+								<field name="rule_ids">
+									<tree>
+										<field name="name" />
+										<field name="criteria" />
+										<field name="value" />
+										<field name="currency" />
+										<field name="meli_listing_type" />
+										<field name="meli_categ_ids" widget="many2many_tags" />
+									</tree>
+									<form>
+										<group>
+											<group>
+												<field name="name" />
+												<field name="criteria" />
+												<field name="meli_categ_ids" widget="many2many_tags" />
+											</group>
+											<group>
+												<field name="meli_listing_type" />
+												<field name="value" />
+												<field name="currency" />
+											</group>
+										</group>
+										<group string="Descripcion" colspan="2">
+											<field name="description" nolabel="1" placeholder="Descripción" />
+										</group>
+									</form>
+								</field>
+							</page>
+							<page string="Otra Información">
+								<field name="description" placeholder="Descripción" />
+							</page>
+						</notebook>
+					</sheet>
+				</form>
+			</field>
+		</record>
+
+		<record id="meli_campaign_search_view" model="ir.ui.view">
+			<field name="name">meli.campaign.search</field>
+			<field name="model">meli.campaign</field>
+			<field name="arch" type="xml">
+				<search>
+					<field name="meli_id" />
+					<field name="name" />
+					<field name="date_from" />
+					<field name="date_to" />
+					<field name="state" />
+					<group name="filters" string="Filtros">
+						<filter name="filter_inactive" string="Inactivos"
+							domain="[('active','=',False)]" />
+					</group>
+					<group name="group_by" string="Agrupar por">
+						<filter name="group_by_state" string="Estado"
+							context="{'group_by': 'state'}" />
+					</group>
+				</search>
+			</field>
+		</record>
+
+		<record id="meli_campaign_action" model="ir.actions.act_window">
+			<field name="name">Campañas</field>
+			<field name="type">ir.actions.act_window</field>
+			<field name="res_model">meli.campaign</field>
+			<field name="view_type">form</field>
+			<field name="view_mode">tree,form</field>
+			<field name="view_id" ref="meli_campaign_tree_view" />
+			<field name="search_view_id" ref="meli_campaign_search_view" />
+		</record>
+
+		<menuitem id="meli_campaign_menu" name="Campañas" sequence="15"
+			parent="menu_meli" action="meli_campaign_action" />
+
+	</data>
+</odoo>

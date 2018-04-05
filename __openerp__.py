@@ -38,6 +38,7 @@
         'views/warning_view.xml',
         'views/questions_view.xml',
         'views/orders_view.xml',
+        'views/meli_campaign_view.xml',
         'views/sale_order_view.xml',
         'views/res_partner_view.xml',
     ],

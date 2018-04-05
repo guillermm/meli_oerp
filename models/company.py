@@ -314,3 +314,28 @@ class ResCompany(models.Model):
                     csv_file.writerow([line[0], line[1]])
                 fp.close()
         return True
+    
+    @api.multi
+    def action_get_all_campaign(self):
+        meli_util_model = self.env['meli.util']
+        campaign_model = self.env['meli.campaign']
+        self.ensure_one()
+        meli = meli_util_model.get_new_instance(self)
+        params = {'access_token': meli.access_token}
+        response = meli.get("/users/%s/deals/search" % self.mercadolibre_seller_id, params)
+        rjson = response.json()
+        campaign_recs = campaign_model.browse()
+        if 'error' in rjson:
+            _logger.error('ERROR al obtener campañas de MELI: %s', rjson.get('message', ''))
+        for campaign in rjson.get('results', []):
+            campaign_recs |= campaign_model.find_create(campaign)
+        action = True
+        if campaign_recs:
+            action = self.env.ref('meli_oerp.meli_campaign_action').read()[0]
+            if len(campaign_recs) > 1:
+                action['domain'] = [('id', 'in', campaign_recs.ids)]
+            else:
+                action['views'] = [(self.env.ref('meli_oerp.meli_campaign_form_view').id, 'form')]
+                action['res_id'] = campaign_recs.ids[0]
+        return action
+    
