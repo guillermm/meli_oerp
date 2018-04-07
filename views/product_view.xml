@@ -32,11 +32,12 @@
 								attrs="{'invisible':['|',('meli_state','=',True),('meli_id','=',False)]}" />
 							<button name='product_meli_status_active' type="object"
 								string="Activar producto en MLA" class="oe_stat_button" icon="fa-check-square"
-								attrs="{'invisible':['|',('meli_state','=',True),('meli_id','=',False)]}" />
+								confirm="Esta seguro de Activar este Producto en Mercado Libre?"
+								attrs="{'invisible':['|', '|', ('meli_state','=',True),('meli_id','=',False), ('meli_status','!=','paused')]}" />
 							<button name='product_meli_status_pause' type="object"
 								string="Pausar producto en MLA" class="oe_stat_button" icon="fa-pause-circle"
 								confirm="Esta seguro de Pausar este Producto en Mercado Libre?"
-								attrs="{'invisible':['|',('meli_state','=',True),('meli_id','=',False)]}" />
+								attrs="{'invisible':['|', '|', ('meli_state','=',True),('meli_id','=',False),('meli_status','!=','active')]}" />
 							<button name='product_meli_status_close' type="object"
 								string="Cerrar producto en MLA" class="oe_stat_button" icon="fa-times-circle-o"
 								confirm="Esta seguro de Cerrar este Producto en Mercado Libre?"
