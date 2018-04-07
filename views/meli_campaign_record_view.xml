@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+	<data>
+
+		<record id="meli_campaign_record_tree_view" model="ir.ui.view">
+			<field name="name">meli.campaign.record.tree</field>
+			<field name="model">meli.campaign.record</field>
+			<field name="arch" type="xml">
+				<tree decoration-muted="state=='rejected'" decoration-primary="state=='pending_approval'"
+					decoration-info="state in ('published', 'done')">
+					<field name="campaign_id" />
+					<field name="name" />
+					<field name="state" />
+				</tree>
+			</field>
+		</record>
+
+		<record id="meli_campaign_record_form_view" model="ir.ui.view">
+			<field name="name">meli.campaign.record.form</field>
+			<field name="model">meli.campaign.record</field>
+			<field name="arch" type="xml">
+				<form>
+					<header>
+						<button name="action_set_products" string="Seleccionar Productos"
+							type="object"
+							attrs="{'invisible': ['|', ('line_ids', '!=', []), ('state', 'not in', ('draft',))]}"
+							class="oe_highlight" />
+						<button name="action_publish_to_meli" string="Publicar Oferta"
+							type="object" confirm="Esta seguro de Publicar la Oferta en MELI?"
+							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', 'not in', ('draft',))]}"
+							class="oe_highlight" />
+						<button name="action_set_products" string="Agregar Productos"
+							type="object" context="{'action_type': 'add'}"
+							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', '!=', 'draft')]}" />
+						<button name="action_set_products" string="Quitar Productos"
+							type="object" context="{'action_type': 'remove'}"
+							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', '!=', 'draft')]}" />
+						<button name="action_set_products" string="Agregar Productos"
+							type="object" context="{'action_type': 'add'}"
+							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', 'not in', ('pending_approval',))]}"
+							class="oe_highlight" />
+						<button name="action_set_products" string="Quitar Productos"
+							type="object" context="{'action_type': 'remove'}"
+							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', 'not in', ('pending_approval',))]}"
+							class="oe_highlight" />
+						<button name="action_recompute_prices" string="Re-Calcular Precios a Productos"
+							type="object"
+							confirm="Esta Seguro de recalcular los Precios?, esto se hara en base a la lista de precios seleccionada"
+							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', 'not in', ('draft', 'pending_approval',))]}" />
+						<button name="action_done_publish" string="Finalizar Publicacion"
+							type="object"
+							confirm="Esta seguro de Finalizar la Publicacion?. Ya no podra Ofertar mas productos y debera crear otra campaña"
+							states="published" class="oe_highlight" />
+						<button name="action_update_prices_to_meli" string="Actualizar Oferta en MELI"
+							type="object"
+							confirm="Esta Seguro de Actualizar la Oferta en MELI?, esto enviara todos los productos con el precio actual"
+							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', 'not in', ('pending_approval','published'))]}" />
+						<button name="action_cancel_publish" string="Cancelar Publicacion"
+							type="object" confirm="Esta seguro de Cancelar la Publicacion?."
+							states="pending_approval,published" />
+						<field name="state" widget="statusbar" statusbar_visible="draft,published,done" />
+					</header>
+					<sheet>
+						<group>
+							<group>
+								<field name="campaign_id" options="{'no_create': True}" />
+								<field name="name" />
+							</group>
+							<group>
+								<field name="pricelist_id" options="{'no_create': True}" />
+							</group>
+						</group>
+						<group string="Descripcion" colspan="2">
+							<field name="description" nolabel="1"
+								placeholder="Descripcion de la Oferta" />
+						</group>
+						<notebook colspan="2">
+							<page string="Productos en Oferta">
+								<field name="line_ids">
+									<tree create="0" delete="0" editable="bottom"
+										decoration-muted="state=='rejected'" decoration-primary="state=='pending_approval'"
+										decoration-info="state in ('published', 'done')">
+										<field name="product_template_id" required="1" readonly="1"
+											force_save="1" />
+										<field name="price_unit" required="1" readonly="1"
+											force_save="1" />
+										<field name="list_price" required="1" readonly="1"
+											force_save="1" />
+										<field name="meli_price" required="1"
+											attrs="{'readonly': [('state','=','rejected')]}" />
+										<field name="declared_stock" readonly="1" force_save="1" />
+										<field name="declared_free_shipping"
+											attrs="{'readonly': [('state','in',('done', 'rejected'))]}" />
+										<field name="declared_oro_premium_full"
+											attrs="{'readonly': [('state','in',('done', 'rejected'))]}" />
+										<field name="state" readonly="1" force_save="1" />
+									</tree>
+									<form>
+										<header>
+											<button name="action_update_to_meli" string="Actualizar Oferta"
+												type="object" confirm="Esta seguro de Actualizar la Oferta en MELI?"
+												states="pending_approval,published" class="oe_highlight" />
+											<button name="action_unpublish_to_meli" string="Eliminar Item de Oferta"
+												type="object" confirm="Esta seguro de Eliminar este Item la Oferta en MELI?"
+												states="pending_approval,published,done" />
+											<field name="state" widget="statusbar"
+												statusbar_visible="draft,published,done" />
+										</header>
+										<group>
+											<group>
+												<field name="product_template_id" />
+												<field name="price_unit" />
+												<field name="list_price" />
+												<field name="meli_price" />
+											</group>
+											<group>
+												<field name="declared_stock" />
+												<field name="declared_oro_premium_full" />
+												<field name="declared_free_shipping" />
+											</group>
+										</group>
+										<notebook colspan="2">
+											<page string="Razones de Revision"
+												attrs="{'invisible': [('review_reasons_ids', '=', [])]}">
+												<field name="review_reasons_ids">
+													<tree>
+														<field name="reason_type" />
+														<field name="reason_requisite" />
+														<field name="message_key" />
+													</tree>
+													<form>
+														<group>
+															<field name="reason_type" />
+															<field name="reason_requisite" />
+															<field name="message_key" />
+														</group>
+													</form>
+												</field>
+											</page>
+										</notebook>
+									</form>
+								</field>
+							</page>
+						</notebook>
+					</sheet>
+				</form>
+			</field>
+		</record>
+
+		<record id="meli_campaign_record_search_view" model="ir.ui.view">
+			<field name="name">meli.campaign.record.search</field>
+			<field name="model">meli.campaign.record</field>
+			<field name="arch" type="xml">
+				<search>
+					<field name="campaign_id" />
+					<field name="name" />
+					<field name="state" />
+					<group name="filters" string="Filtros">
+					</group>
+					<group name="group_by" string="Agrupar por">
+						<filter name="group_by_campaign" string="Campaña"
+							context="{'group_by': 'campaign_id'}" />
+						<filter name="group_by_state" string="Estado"
+							context="{'group_by': 'state'}" />
+					</group>
+				</search>
+			</field>
+		</record>
+
+		<record id="meli_campaign_record_action" model="ir.actions.act_window">
+			<field name="name">Publicacion de Ofertas</field>
+			<field name="type">ir.actions.act_window</field>
+			<field name="res_model">meli.campaign.record</field>
+			<field name="view_type">form</field>
+			<field name="view_mode">tree,form</field>
+			<field name="view_id" ref="meli_campaign_record_tree_view" />
+			<field name="search_view_id" ref="meli_campaign_record_search_view" />
+		</record>
+
+		<menuitem id="meli_campaign_record_menu" name="Publicacion de Ofertas"
+			sequence="17" parent="menu_meli" action="meli_campaign_record_action" />
+
+	</data>
+</odoo>

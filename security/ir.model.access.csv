@@ -11,6 +11,9 @@
 "access_model_mercadolibre_questions_group_user","access_model_mercadolibre_questions_group_user","model_mercadolibre_questions","base.group_user",1,0,0,0
 "access_model_meli_campaign_group_user","access_model_meli_campaign_group_user","model_meli_campaign","base.group_user",1,0,0,0
 "access_model_meli_campaign_rule_group_user","access_model_meli_campaign_rule_group_user","model_meli_campaign_rule","base.group_user",1,0,0,0
+"access_model_meli_campaign_record_group_user","access_model_meli_campaign_record_group_user","model_meli_campaign_record","base.group_user",1,0,0,0
+"access_model_meli_campaign_record_line_group_user","access_model_meli_campaign_record_line_group_user","model_meli_campaign_record_line","base.group_user",1,0,0,0
+"access_model_meli_campaign_record_review_reason_group_user","access_model_meli_campaign_record_review_reason_group_user","model_meli_campaign_record_review_reason","base.group_user",1,0,0,0
 "access_model_mercadolibre_banner_group_meli_user","access_model_mercadolibre_banner_group_meli_user","model_mercadolibre_banner","group_meli_user",1,1,1,1
 "access_model_mercadolibre_category_attribute_group_meli_user","access_model_mercadolibre_category_attribute_group_meli_user","model_mercadolibre_category_attribute","group_meli_user",1,1,1,1
 "access_model_mercadolibre_category_attribute_value_group_meli_user","access_model_mercadolibre_category_attribute_value_group_meli_user","model_mercadolibre_category_attribute_value","group_meli_user",1,1,1,1
@@ -23,3 +26,6 @@
 "access_model_mercadolibre_questions_group_meli_user","access_model_mercadolibre_questions_group_meli_user","model_mercadolibre_questions","group_meli_user",1,1,1,1
 "access_model_meli_campaign_group_meli_user","access_model_meli_campaign_group_meli_user","model_meli_campaign","group_meli_user",1,1,1,1
 "access_model_meli_campaign_rule_group_meli_user","access_model_meli_campaign_rule_group_meli_user","model_meli_campaign_rule","group_meli_user",1,1,1,1
+"access_model_meli_campaign_record_group_meli_user","access_model_meli_campaign_record_group_meli_user","model_meli_campaign_record","group_meli_user",1,1,1,1
+"access_model_meli_campaign_record_line_group_meli_user","access_model_meli_campaign_record_line_group_meli_user","model_meli_campaign_record_line","group_meli_user",1,1,1,1
+"access_model_meli_campaign_record_review_reason_group_meli_user","access_model_meli_campaign_record_review_reason_group_meli_user","model_meli_campaign_record_review_reason","group_meli_user",1,1,1,1

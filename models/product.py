@@ -1044,6 +1044,22 @@ class ProductTemplate(models.Model):
             fp.close()
         return True
     
+    @api.model
+    def _search(self, args, offset=0, limit=None, order=None, count=False, access_rights_uid=None):
+        if self.env.context.get('filter_product_meli_campaign') and self.env.context.get('filter_product_action_type'):
+            campaign = self.env['meli.campaign.record'].browse(self.env.context.get('filter_product_meli_campaign'))
+            action_type = self.env.context.get('filter_product_action_type')
+            product_ids = campaign.line_ids.mapped('product_template_id').ids
+            if product_ids:
+                #al remover productos, filtrar los productos que puede remover
+                #caso contrario(agregar productos) no mostrar los ya configurados
+                if action_type == 'remove':
+                    args.append(('id', 'in', product_ids))
+                elif action_type == 'add':
+                    args.append(('id', 'not in', product_ids))
+        res = super(ProductTemplate, self)._search(args=args, offset=offset, limit=limit, order=order, count=count, access_rights_uid=access_rights_uid)
+        return res
+    
 class ProductProduct(models.Model):
 
     _inherit = "product.product"

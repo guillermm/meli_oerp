@@ -11,6 +11,7 @@ import company
 import res_partner
 import meli_util
 import meli_campaign
+import meli_campaign_record
 import product_attribute
 import product_image
 import stock_warehouse

@@ -6,6 +6,4 @@
 #
 ##############################################################################
 
-import models
-import controllers
-import wizard
+import wizard_set_products_campaign
