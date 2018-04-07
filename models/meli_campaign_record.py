@@ -12,11 +12,13 @@ class MeliCampaignRecord(models.Model):
     _description = u'Registros de Campañas MELI'
     
     campaign_id = fields.Many2one('meli.campaign', u'Campaña', 
-        required=True, ondelete="restrict")
+        required=True, readonly=True, states={'draft':[('readonly',False)]}, ondelete="restrict")
     pricelist_id = fields.Many2one('product.pricelist', u'Tarifa de Venta',
         required=True, ondelete="restrict")
-    name = fields.Char(u'Nombre', required=True)
-    description = fields.Text(string=u'Descripcion')
+    name = fields.Char(u'Nombre', 
+        required=True, readonly=True, states={'draft':[('readonly',False)]})
+    description = fields.Text(string=u'Descripcion',
+        readonly=True, states={'draft':[('readonly',False)]})
     line_ids = fields.One2many('meli.campaign.record.line', 
         'meli_campaign_id', u'Productos en Oferta', copy=False)
     state = fields.Selection([
@@ -64,7 +66,7 @@ class MeliCampaignRecord(models.Model):
     def action_cancel_publish(self):
         self.ensure_one()
         warning_model = self.env['warning']
-        messages = self.line_ids.action_unpublish_to_meli()
+        messages = self.line_ids.filtered(lambda x: x.state != 'rejected').action_unpublish_to_meli()
         if messages:
             return warning_model.info(title='Cancelar Oferta', message=u"\n".join(messages))
         self.write({'state': 'rejected'})
@@ -85,8 +87,10 @@ class MeliCampaignRecord(models.Model):
     @api.multi
     def action_update_prices_to_meli(self):
         warning_model = self.env['warning']
+        #los nuevos productos publicarlos
+        messages = self.mapped('line_ids').filtered(lambda x: x.state == 'draft').action_publish_to_meli()
         #actualizar todas las lineas que esten activas
-        messages = self.mapped('line_ids').filtered(lambda x: x.state in ('pending_approval', 'published')).action_update_to_meli()
+        messages.extend(self.mapped('line_ids').filtered(lambda x: x.state in ('pending_approval', 'published')).action_update_to_meli())
         if messages:
             return warning_model.info(title='Actualizar Ofertas', message=u"\n".join(messages))
         return True
@@ -135,6 +139,8 @@ class MeliCampaignRecordLine(models.Model):
                 'item_id': line.product_template_id.meli_id,
                 'deal_price': line.meli_price,
                 'regular_price': line.price_unit,
+                'declared_free_shipping': line.declared_free_shipping,
+                'declared_oro_premium_full': line.declared_oro_premium_full,
             }
             url = "/users/%s/deals/%s/proposed_items" % (company.mercadolibre_seller_id, line.meli_campaign_id.campaign_id.meli_id)
             response = meli.post(url, post_data, params)
@@ -195,6 +201,8 @@ class MeliCampaignRecordLine(models.Model):
         for line in self:
             post_data = {
                 'deal_price': line.meli_price,
+                'declared_free_shipping': line.declared_free_shipping,
+                'declared_oro_premium_full': line.declared_oro_premium_full,
             }
             url = "/users/%s/deals/%s/proposed_items/%s" % (company.mercadolibre_seller_id, line.meli_campaign_id.campaign_id.meli_id, line.product_template_id.meli_id)
             response = meli.put(url, post_data, params)

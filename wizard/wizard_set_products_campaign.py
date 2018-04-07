@@ -43,4 +43,7 @@ class WizardSetProductsCampaign(models.TransientModel):
                 lines_unpublish.action_unpublish_to_meli()
                 if lines_to_remove:
                     lines_to_remove.unlink()
+            #cuando se eliminen todos los productos de la oferta, marcar la oferta como cancelada
+            if all([l.state == 'rejected' for l in self.meli_campaign_id.line_ids]):
+                self.meli_campaign_id.action_cancel_publish()
         return {'type': 'ir.actions.act_window_close'}

@@ -29,20 +29,17 @@
 							type="object" confirm="Esta seguro de Publicar la Oferta en MELI?"
 							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', 'not in', ('draft',))]}"
 							class="oe_highlight" />
+						<button name="action_update_prices_to_meli" string="Actualizar Oferta en MELI"
+							type="object"
+							confirm="Esta Seguro de Actualizar la Oferta en MELI?, esto enviara todos los productos con el precio actual"
+							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', 'not in', ('pending_approval','published'))]}"
+							class="oe_highlight" />
 						<button name="action_set_products" string="Agregar Productos"
 							type="object" context="{'action_type': 'add'}"
-							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', '!=', 'draft')]}" />
+							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', 'not in', ('draft', 'pending_approval',))]}" />
 						<button name="action_set_products" string="Quitar Productos"
 							type="object" context="{'action_type': 'remove'}"
-							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', '!=', 'draft')]}" />
-						<button name="action_set_products" string="Agregar Productos"
-							type="object" context="{'action_type': 'add'}"
-							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', 'not in', ('pending_approval',))]}"
-							class="oe_highlight" />
-						<button name="action_set_products" string="Quitar Productos"
-							type="object" context="{'action_type': 'remove'}"
-							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', 'not in', ('pending_approval',))]}"
-							class="oe_highlight" />
+							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', 'not in', ('draft', 'pending_approval',))]}" />
 						<button name="action_recompute_prices" string="Re-Calcular Precios a Productos"
 							type="object"
 							confirm="Esta Seguro de recalcular los Precios?, esto se hara en base a la lista de precios seleccionada"
@@ -51,10 +48,6 @@
 							type="object"
 							confirm="Esta seguro de Finalizar la Publicacion?. Ya no podra Ofertar mas productos y debera crear otra campaña"
 							states="published" class="oe_highlight" />
-						<button name="action_update_prices_to_meli" string="Actualizar Oferta en MELI"
-							type="object"
-							confirm="Esta Seguro de Actualizar la Oferta en MELI?, esto enviara todos los productos con el precio actual"
-							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', 'not in', ('pending_approval','published'))]}" />
 						<button name="action_cancel_publish" string="Cancelar Publicacion"
 							type="object" confirm="Esta seguro de Cancelar la Publicacion?."
 							states="pending_approval,published" />
@@ -94,6 +87,12 @@
 										<field name="declared_oro_premium_full"
 											attrs="{'readonly': [('state','in',('done', 'rejected'))]}" />
 										<field name="state" readonly="1" force_save="1" />
+										<button name="action_update_to_meli" string="Actualizar Oferta"
+											type="object" confirm="Esta seguro de Actualizar la Oferta en MELI?"
+											states="pending_approval,published" class="oe_highlight" />
+										<button name="action_unpublish_to_meli" string="Eliminar Item de Oferta"
+											type="object" confirm="Esta seguro de Eliminar este Item la Oferta en MELI?"
+											states="pending_approval,published,done" />
 									</tree>
 									<form>
 										<header>
