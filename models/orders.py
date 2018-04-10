@@ -385,6 +385,7 @@ class mercadolibre_orders(models.Model):
         PostingModel = self.env['mercadolibre.posting']
         partner = PartnerModel.browse()
         notes = []
+        send_mail = False
         need_review = False
         meli_order = MeliOrderModel.search([('order_id','=',order_json['id'])], limit=1)
         order_vals = self._prepare_order_vals(order_json)
@@ -419,6 +420,8 @@ class mercadolibre_orders(models.Model):
         else:
             _logger.info("Adding new meli order: %s", str(order_vals))
             meli_order = MeliOrderModel.create(order_vals)
+            if meli_order.status == 'paid':
+                send_mail = True
         #update internal fields (items, payments, buyers)
         if 'order_items' in order_json:
             notes = []
@@ -447,6 +450,9 @@ class mercadolibre_orders(models.Model):
             'need_review': need_review,
             'note': "".join(notes),
         })
+        template_mail = self.env.ref('meli_oerp.et_new_meli_order', False)
+        if send_mail and template_mail and not notes:
+            template_mail.send_mail(meli_order.id, force_send=True)
         return meli_order, notes
 
     def orders_update_order( self, context=None ):
@@ -568,6 +574,7 @@ class mercadolibre_orders(models.Model):
         meli_orders = self.search([
             ('status','=', 'paid'),
             ('shipping_status','=', 'ready_to_ship'),
+            ('shipping_substatus','=', 'printed'),
         ], limit=limit_meli)
         message_list = []
         current_document_info = ""
@@ -578,6 +585,15 @@ class mercadolibre_orders(models.Model):
                 sale_order = meli_order.sale_order_id
                 if not sale_order:
                     sale_order = meli_order._find_create_sale_order()
+                #cuando el pedido de venta es cancelado en MELI
+                #el estado del pago sera refunded
+                #asi que esas no validarlas, y en su lugar cancelarlas
+                if meli_order.payments.filtered(lambda x: x.status == 'refunded'):
+                    current_document_info = "Anulando Pedido de Venta ID: %s Numero: %s" % (sale_order.id, sale_order.name)
+                    _logger.info(current_document_info)
+                    sale_order.action_cancel()
+                    meli_order.write({'status': 'cancelled'})
+                    continue
                 if sale_order.state in ('draft', 'sent'):
                     current_document_info = "Confirmando Pedido de Venta ID: %s Numero: %s" % (sale_order.id, sale_order.name)
                     _logger.info(current_document_info)
@@ -618,6 +634,14 @@ class mercadolibre_orders(models.Model):
                 csv_file.writerow([line[0], line[1]])
             fp.close()
         return True
+    
+    @api.multi
+    def get_signup_url_meli(self):
+        self.ensure_one()
+        return self.partner_id.with_context(signup_valid=True, signup_force_type_in_url='login')._get_signup_url_for_action(
+            action=self.env.ref('meli_oerp.action_meli_orders_tree').id,
+            model=self._name,
+            view_type='tree')[self.partner_id.id]
 
 class MercadolibreOrderItems(models.Model):
     
