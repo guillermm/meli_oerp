@@ -17,6 +17,7 @@
         'base', 
         'product',
         'sale',
+        'stock',
         'laoo_utils',
         'website_sale',
     ],
