@@ -147,12 +147,29 @@
 					<field name="order_id" />
 					<field name="sale_order_id" />
 					<field name="partner_id" />
-					<field name="date_created" />
-					<field name="date_closed" />
+					<field name="date_created" widget="date" />
+					<field name="date_closed" widget="date" />
+					<field name="status" />
+					<filter string="Hoy"
+						domain="[('date_created', '=', context_today().strftime('%Y-%m-%d'))]"
+						name="today_filter" />
+					<filter string="Ayer"
+						domain="[('date_created','=', ((context_today()-datetime.timedelta(days=1)).strftime('%Y-%m-%d')))]" />
+					<filter icon="terp-go-month" string="Mes actual" name="month"
+						domain="[('date_created','&lt;=',(datetime.datetime.combine(context_today() + relativedelta(day=31), datetime.time(23,59,59)))),('date_created','&gt;=',(datetime.datetime.combine(context_today() - relativedelta(day=1), datetime.time(00,00,00))))]"
+						help="Mes actual" />
+					<separator />
+					<filter name="filter_need_print_tag" string="Sin Imprimir Etiqueta de Envio"
+						domain="[('status','=','paid'), ('shipping_substatus','=','ready_to_print')]" />
 					<filter name="filter_need_review" string="Necesita Revisión"
 						domain="[('need_review','=',True)]" />
+					<separator />
 					<filter string='Cliente' context="{'group_by' : 'partner_id'}" />
-					<filter string='Status' icon="terp-mrp" domain="[]"
+					<separator />
+					<filter string='Fecha de Creacion' context="{'group_by' : 'date_created'}" />
+					<filter string='Fecha de Finalizacion' context="{'group_by' : 'date_closed'}" />
+					<separator />
+					<filter string='Estado' icon="terp-mrp" domain="[]"
 						context="{'group_by' : 'status'}" />
 				</search>
 			</field>
