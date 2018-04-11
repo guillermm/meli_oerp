@@ -240,7 +240,9 @@ class mercadolibre_orders(models.Model):
         company = self.env.user.company_id
         sale_order_vals = self._prepare_sale_order_vals(pricelist, company)
         if (sale_order):
-            if sale_order.state not in ('sale', 'done', 'cancel'):
+            if self.status == 'paid' and self.shipping_status == 'ready_to_ship' and self.shipping_substatus == 'printed':
+                _logger.info("No se modifica sale.order: %s, esta lista para ser validada", sale_order.id)
+            elif sale_order.state not in ('sale', 'done', 'cancel'):
                 _logger.info("Updating sale.order: %s", sale_order.id)
                 sale_order.write(sale_order_vals)
         else:
