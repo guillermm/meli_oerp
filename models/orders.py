@@ -20,7 +20,6 @@
 ##############################################################################
 
 import os
-import re
 import json
 import logging
 from datetime import datetime
@@ -99,6 +98,13 @@ class mercadolibre_orders(models.Model):
                 billinginfo+= billing_json['doc_number']
         return billinginfo
 
+    def _pre_process_document_number(self, document_number):
+        '''
+        En algunos paises sera necesario validar o procesar el RUT/RUC o documento tributario del cliente
+        antes de crear el cliente, sobreescribir esta funcion de ser necesario
+        '''
+        return document_number
+    
     def full_phone( self, phone_json, context=None ):
         full_phone = ''
         if 'area_code' in phone_json:
@@ -168,10 +174,10 @@ class mercadolibre_orders(models.Model):
             'phone': self.full_phone(meli_buyer_vals['phone']),
             'email': meli_buyer_vals['email'],
             'meli_buyer_id': meli_buyer_vals['id'],
-            'document_number': document_number,
-            'vat': 'CL%s' % document_number,
         }
-        partner_vals = self.env['res.partner'].process_fields_meli(partner_vals, meli_buyer_vals['billing_info'].get('doc_type') or 'RUT')
+        #pasar el vat con codigo de pais incluido
+        if self.env.user.company_id.country_id:
+            partner_vals['vat'] = '%s%s' % (self.env.user.company_id.country_id.code, document_number)
         return partner_vals
     
     @api.model
@@ -179,8 +185,6 @@ class mercadolibre_orders(models.Model):
         partnerModel = self.env['res.partner']
         partner_vals = self._prepare_partner_vals(meli_buyer_vals, document_number)
         partner_find = partnerModel.search([('meli_buyer_id', '=', partner_vals['meli_buyer_id'])], limit=1)
-        if not partner_find and document_number:
-            partner_find = partnerModel.search([('document_number', '=', document_number)])
         if not partner_find:
             _logger.info("creating partner: %s", str(partner_vals))
             partner_find = partnerModel.create(partner_vals)
@@ -396,7 +400,7 @@ class mercadolibre_orders(models.Model):
             document_number =False
             if Buyer['billing_info'].get('doc_number'):
                 document_number = Buyer['billing_info'].get('doc_number')
-                document_number = (re.sub('[^1234567890Kk]', '', str(document_number))).zfill(9).upper()
+                document_number = self._pre_process_document_number(document_number)
             if not document_number:
                 msj = "*Cliente: %s %s con ID: %s no tiene Informacion tributaria(RUT, Tipo de documento)" % \
                     (Buyer.get('first_name'), Buyer.get('last_name'), Buyer.get('id'))

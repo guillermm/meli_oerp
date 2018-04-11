@@ -9,7 +9,3 @@ class ResPartner(models.Model):
     _inherit = "res.partner"
 
     meli_buyer_id = fields.Char('Meli Buyer Id')
-    
-    @api.model
-    def process_fields_meli(self, values, doc_type):
-        return values
