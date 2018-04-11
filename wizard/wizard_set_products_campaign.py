@@ -9,7 +9,7 @@ class WizardSetProductsCampaign(models.TransientModel):
     _name = 'wizard.set.products.campaign'
     _description = u'Asistente para configurar productos en campañas meli'
     
-    meli_campaign_id = fields.Many2one('meli.campaign.record', u'Registro de Campaña', required=True)
+    meli_campaign_id = fields.Many2one('meli.campaign.record', u'Registro de Campaña', required=False)
     action_type = fields.Selection([
         ('add','Agregar Productos'),
         ('remove','Quitar Productos'),
