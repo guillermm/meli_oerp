@@ -81,6 +81,7 @@ class mercadolibre_orders(models.Model):
     shipping_substatus = fields.Selection([
         ('ready_to_print','Etiqueta no Impresa'),
         ('printed','Etiqueta Impresa'),
+        ('waiting_for_withdrawal','Esperando retiro'),
     ], string=u'Estado de Impresion', index=True, readonly=True)
     shipping_mode = fields.Selection([
         ('me2','Mercado Envio'),
