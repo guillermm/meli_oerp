@@ -674,8 +674,12 @@ class mercadolibre_orders(models.Model):
                 #cuando el pedido de venta es cancelado en MELI
                 #el estado del pago sera refunded
                 #asi que esas no validarlas, y en su lugar cancelarlas
-                if meli_order.payments.filtered(lambda x: x.status == 'refunded'):
+                #tambien existen pedidos con un pago cancelado y uno aprobado
+                #esos pedidos deben validarse, xq x alguna razon se anulo el primer pago
+                #pero el siguiente pago se realizo
+                if not meli_order.payments.filtered(lambda x: x.status == 'approved'):
                     current_document_info = "Anulando Pedido de Venta ID: %s Numero: %s" % (sale_order.id, sale_order.name)
+                    message_list.append((current_document_info, ""))
                     _logger.info(current_document_info)
                     sale_order.action_cancel()
                     meli_order.write({'status': 'cancelled'})
