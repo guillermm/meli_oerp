@@ -9,6 +9,7 @@ class StockWarehouse(models.Model):
     _inherit = 'stock.warehouse'
     
     meli_published = fields.Boolean(u'Disponible en MELI', copy=False)
+    meli_sequence = fields.Integer(u'Secuencia Meli')
     
     @api.multi
     def meli_publish_button(self):

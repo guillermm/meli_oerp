@@ -13,6 +13,9 @@
 							options="{'terminology': {'string_false': 'MELI NO publicado', 'hover_false': 'MELI Publicar', 'string_true': 'MELI Publicado', 'hover_true': 'MELI NO publicar'}}" />
 					</button>
 				</div>
+				<field name="code" position="after">
+					<field name="meli_sequence" attrs="{'invisible': [('meli_published', '=', False)]}" />
+				</field>
 			</field>
 		</record>
 

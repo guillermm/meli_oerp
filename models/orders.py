@@ -308,7 +308,10 @@ class mercadolibre_orders(models.Model):
         }
         if company.mercadolibre_sale_team_id:
             sale_order_vals['team_id'] = company.mercadolibre_sale_team_id.id
-        warehouse_meli = self.env['stock.warehouse'].sudo().search([('meli_published','=',True), ('company_id','=',company.id)], limit=1)
+        warehouse_meli = self.env['stock.warehouse'].sudo().search([
+            ('meli_published','=',True), 
+            ('company_id','=',company.id),
+            ], order="meli_sequence", limit=1)
         if not warehouse_meli:
             warehouse_meli = self.env['stock.warehouse'].sudo().search([('company_id','=',company.id)], limit=1)
         if warehouse_meli:
@@ -652,6 +655,47 @@ class mercadolibre_orders(models.Model):
             'payment_date': self.date_closed,
         }
         return payment_vals
+    
+    @api.multi
+    def _get_next_warehouse_to_order(self, warehouse):
+        """
+        Devolver el siguiente almacen disponible para meli
+        segun el orden de prioridad de meli configurada en cada almacen
+        """
+        return self.env['stock.warehouse'].search([
+            ('meli_published', '=', True),
+            ('company_id','=', warehouse.company_id.id),
+            ('meli_sequence', '>', warehouse.meli_sequence),
+            ('id', '!=', warehouse.id),
+            ], order="meli_sequence", limit=1)
+        
+    @api.multi
+    def _get_warehouse_to_order(self, sale_order):
+        """
+        Cuando hay multiples almacenes de los cuales se envia el stock a meli
+        debemos ir dando de baja al stock segun se va vendiendo en meli,
+        pero respetando un orden de tiendas, es decir
+        primero dar de baja a todo el stock de una tienda, luego que no hay stock en esa tienda
+        dar de baja a la siguiente tienda(segun el orden de las tiendas)
+        Es un algoritmo que se puede mejorar si MELI pasara el ID de la tienda de la cual se esta vendiendo
+        pero no existe ese dato en meli
+        por ello tendremos que asumir la tienda mediante prioridades
+        y basandonos en una regla de meli que un pedido de venta SIEMPRE es por 1 producto
+        nunca va a haber mas de 1 producto en el carrito de compras de meli
+        """
+        ProductModel = self.env['product.product']
+        new_warehouse = sale_order.warehouse_id
+        next_warehouse = sale_order.warehouse_id
+        lines_to_check = sale_order.order_line.filtered(lambda x: x.product_id and x.product_id.type in ('product', 'consu'))
+        for line in lines_to_check:
+            while next_warehouse:
+                product = ProductModel.with_context(warehouse=next_warehouse.id).browse(line.product_id.id)
+                if product.qty_available <= 0:
+                    next_warehouse = self._get_next_warehouse_to_order(next_warehouse)
+                else:
+                    new_warehouse = next_warehouse
+                    break
+        return new_warehouse
         
     @api.model
     def action_validate_sale_order(self):
@@ -687,6 +731,15 @@ class mercadolibre_orders(models.Model):
                 if sale_order.state in ('draft', 'sent'):
                     current_document_info = "Confirmando Pedido de Venta ID: %s Numero: %s" % (sale_order.id, sale_order.name)
                     _logger.info(current_document_info)
+                    #cambiar el almacen de donde tomar los productos
+                    #de ser necesario(cuando no haya stock en un almacen usar el siguiente)
+                    warehouse = self._get_warehouse_to_order(sale_order)
+                    if sale_order.warehouse_id != warehouse:
+                        current_document_info = "Cambiando almacen a Pedido de Venta ID: %s Numero: %s" % (sale_order.id, sale_order.name)
+                        more_info = "Almacen anterior: %s, nuevo almacen: %s" % (sale_order.warehouse_id.name, warehouse.name)
+                        message_list.append((current_document_info, more_info))
+                        sale_order.write({'warehouse_id': warehouse.id})
+                        sale_order.message_post(body="Cambiando almacen por falta de stock %s" % more_info)
                     sale_order.action_confirm()
                 #validar los picking
                 for picking in sale_order.picking_ids.filtered(lambda x: x.state not in ('draft', 'cancel', 'done')):
