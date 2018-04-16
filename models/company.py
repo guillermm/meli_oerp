@@ -98,10 +98,6 @@ class ResCompany(models.Model):
 #        except requests.exceptions.HTTPError as e:
 #            print "And you get an HTTPError:", e.message
         if ML_state:
-            ACCESS_TOKEN = ''
-            REFRESH_TOKEN = ''
-            company.write({'mercadolibre_access_token': ACCESS_TOKEN, 'mercadolibre_refresh_token': REFRESH_TOKEN, 'mercadolibre_code': '' } )
-
             if (company.mercadolibre_refresh_token and company.mercadolibre_cron_mail):
                 # we put the job_exception in context to be able to print it inside
                 # the email template
