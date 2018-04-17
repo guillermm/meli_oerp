@@ -327,8 +327,8 @@ class mercadolibre_orders(models.Model):
         company = self.env.user.company_id
         sale_order_vals = self._prepare_sale_order_vals(pricelist, company)
         if (sale_order):
-            if self.status == 'paid' and self.shipping_status == 'ready_to_ship' and self.shipping_substatus == 'printed':
-                _logger.info("No se modifica sale.order: %s, esta lista para ser validada", sale_order.id)
+            if self.shipping_substatus == 'printed':
+                _logger.info("No se modifica sale.order: %s, esta lista para ser validada y etiqueta impresa", sale_order.id)
             elif sale_order.state not in ('sale', 'done', 'cancel'):
                 _logger.info("Updating sale.order: %s", sale_order.id)
                 sale_order.write(sale_order_vals)
@@ -339,7 +339,35 @@ class mercadolibre_orders(models.Model):
             self.write({'sale_order_id': sale_order.id})
         for line in self.order_items:
             self._add_sale_order_line(sale_order, line)
-        return sale_order
+        #si el pedido esta pagado y listo para enviar, confirmar el pedido de venta y crear el picking
+        message_list = []
+        if self.status == 'paid' and self.shipping_status == 'ready_to_ship':
+            current_document_info = ""
+            try:
+                if sale_order.state in ('draft', 'sent'):
+                    current_document_info = "Confirmando Pedido de Venta ID: %s Numero: %s" % (sale_order.id, sale_order.name)
+                    _logger.info(current_document_info)
+                    #cambiar el almacen de donde tomar los productos
+                    #de ser necesario(cuando no haya stock en un almacen usar el siguiente)
+                    warehouse = self._get_warehouse_to_order(sale_order)
+                    if sale_order.warehouse_id != warehouse:
+                        current_document_info = "Cambiando almacen a Pedido de Venta ID: %s Numero: %s" % (sale_order.id, sale_order.name)
+                        more_info = "Almacen anterior: %s, nuevo almacen: %s" % (sale_order.warehouse_id.name, warehouse.name)
+                        message_list.append((current_document_info, more_info))
+                        sale_order.write({'warehouse_id': warehouse.id})
+                        sale_order.message_post(body="Cambiando almacen por falta de stock %s" % more_info)
+                    sale_order.action_confirm()
+                #validar los picking
+                for picking in sale_order.picking_ids.filtered(lambda x: x.state not in ('draft', 'cancel', 'done')):
+                    current_document_info = "Confirmando y validando picking ID: %s Numero: %s" % (picking.id, picking.name)
+                    _logger.info(current_document_info)
+                    picking.action_confirm()
+                    picking.force_assign()
+                    picking.action_done()
+            except Exception, e:
+                _logger.error(tools.ustr(e))
+                message_list.append((current_document_info, tools.ustr(e)))
+        return sale_order, message_list
         
     @api.model
     def _find_product(self, meli_order_line_vals):
@@ -515,10 +543,7 @@ class mercadolibre_orders(models.Model):
         if 'order_items' in order_json:
             notes = []
             need_review = False
-            cn = 0
             for Item in order_json['order_items']:
-                cn = cn + 1
-                _logger.info(cn)
                 _logger.info(Item)
                 post_related = PostingModel.search([('meli_id','=',Item['item']['id'])])
                 if not post_related:
@@ -534,14 +559,21 @@ class mercadolibre_orders(models.Model):
         if 'payments' in order_json:
             for meli_payment_vals in order_json['payments']:
                 self._add_payment(meli_order, meli_payment_vals)
-        meli_order._find_create_sale_order()
-        meli_order.write({
-            'need_review': need_review,
-            'note': "".join(notes),
-        })
-        template_mail = self.env.ref('meli_oerp.et_new_meli_order', False)
-        if send_mail and template_mail and not notes:
-            template_mail.send_mail(meli_order.id, force_send=True)
+        if meli_order.order_items:
+            sale_order, message_list = meli_order._find_create_sale_order()
+            notes.extend(message_list)
+            meli_order.write({
+                'need_review': need_review,
+                'note': "".join(notes),
+            })
+            template_mail = self.env.ref('meli_oerp.et_new_meli_order', False)
+            if send_mail and template_mail and not notes:
+                template_mail.send_mail(meli_order.id, force_send=True)
+        else:
+            meli_order.write({
+                'need_review': need_review,
+                'note': "".join(notes),
+            })
         return meli_order, notes
 
     def orders_update_order( self, context=None ):
@@ -561,16 +593,23 @@ class mercadolibre_orders(models.Model):
             self.orders_update_order_json( {"id": id, "order_json": order_json } )
         return {}
 
-    def orders_query_iterate( self, offset=0, context=None ):
+    def orders_query_iterate(self, offset=0, filter_by="paid"):
         meli_util_model = self.env['meli.util']
         offset_next = 0
         company = self.env.user.company_id
         meli = meli_util_model.get_new_instance(company)
         message_list = []
-        orders_query = "/orders/search?seller="+company.mercadolibre_seller_id+"&sort=date_desc"
-        if (offset):
-            orders_query = orders_query + "&offset="+str(offset).strip()
-        response = meli.get( orders_query, {'access_token':meli.access_token})
+        orders_query = "/orders/search"
+        params = {
+            'access_token': meli.access_token,
+            'seller': company.mercadolibre_seller_id,
+            'sort': 'date_desc',
+        }
+        if filter_by:
+            params['order.status'] = filter_by
+        if offset:
+            params['offset'] = str(offset).strip()
+        response = meli.get(orders_query, params)
         orders_json = response.json()
         if "error" in orders_json:
             _logger.error( orders_query )
@@ -711,10 +750,15 @@ class mercadolibre_orders(models.Model):
         for meli_order in meli_orders:
             current_document_info = ""
             try:
+                #si por alguna razon no se crearon lineas(xq el ID de Meli no existe en el producto)
+                #y no hay lineas, no hacer nada
+                if not meli_order.order_items:
+                    continue
                 #en caso de no tener pedido de venta, crearlo
                 sale_order = meli_order.sale_order_id
                 if not sale_order:
-                    sale_order = meli_order._find_create_sale_order()
+                    sale_order, message_list_so = meli_order._find_create_sale_order()
+                    message_list.extend(message_list_so)
                 #cuando el pedido de venta es cancelado en MELI
                 #el estado del pago sera refunded
                 #asi que esas no validarlas, y en su lugar cancelarlas
@@ -728,39 +772,23 @@ class mercadolibre_orders(models.Model):
                     sale_order.action_cancel()
                     meli_order.write({'status': 'cancelled'})
                     continue
-                if sale_order.state in ('draft', 'sent'):
-                    current_document_info = "Confirmando Pedido de Venta ID: %s Numero: %s" % (sale_order.id, sale_order.name)
-                    _logger.info(current_document_info)
-                    #cambiar el almacen de donde tomar los productos
-                    #de ser necesario(cuando no haya stock en un almacen usar el siguiente)
-                    warehouse = self._get_warehouse_to_order(sale_order)
-                    if sale_order.warehouse_id != warehouse:
-                        current_document_info = "Cambiando almacen a Pedido de Venta ID: %s Numero: %s" % (sale_order.id, sale_order.name)
-                        more_info = "Almacen anterior: %s, nuevo almacen: %s" % (sale_order.warehouse_id.name, warehouse.name)
-                        message_list.append((current_document_info, more_info))
-                        sale_order.write({'warehouse_id': warehouse.id})
-                        sale_order.message_post(body="Cambiando almacen por falta de stock %s" % more_info)
-                    sale_order.action_confirm()
-                #validar los picking
-                for picking in sale_order.picking_ids.filtered(lambda x: x.state not in ('draft', 'cancel', 'done')):
-                    current_document_info = "Confirmando y validando picking ID: %s Numero: %s" % (picking.id, picking.name)
-                    _logger.info(current_document_info)
-                    picking.action_confirm()
-                    picking.force_assign()
-                    picking.action_done()
                 #crear y validar factura
-                if not sale_order.invoice_ids:
+                if not sale_order.invoice_ids and sale_order.state not in ('draft', 'cancel'):
                     current_document_info = "Creando factura para Pedido de venta ID: %s Numero: %s" % (sale_order.id, sale_order.name)
                     _logger.info(current_document_info)
                     sale_order.action_invoice_create()
-                for invoice in sale_order.invoice_ids.filtered(lambda x: x.state not in ('open', 'paid', 'cancel')):
-                    current_document_info = "Confirmando y pagando la factura ID: %s Numero: %s" % (invoice.id, invoice.display_name)
-                    _logger.info(current_document_info)
-                    invoice.action_invoice_open()
-                    #marcar la factura como pagada
-                    payment_vals = meli_order._prepare_payment_for_invoice(invoice)
-                    payment_id = PaymentModel.create(payment_vals)
-                    payment_id.post()
+                for invoice in sale_order.invoice_ids.filtered(lambda x: x.state not in ('paid', 'cancel')):
+                    if invoice.state == 'draft':
+                        current_document_info = "Confirmando la factura ID: %s Numero: %s" % (invoice.id, invoice.display_name)
+                        _logger.info(current_document_info)
+                        invoice.action_invoice_open()
+                    if invoice.state == 'open': 
+                        #marcar la factura como pagada
+                        current_document_info = "Pagando la factura ID: %s Numero: %s" % (invoice.id, invoice.display_name)
+                        _logger.info(current_document_info)
+                        payment_vals = meli_order._prepare_payment_for_invoice(invoice)
+                        payment_id = PaymentModel.create(payment_vals)
+                        payment_id.post()
             except Exception, e:
                 _logger.error(current_document_info)
                 _logger.error(tools.ustr(e))
