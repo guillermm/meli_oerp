@@ -7,3 +7,4 @@
 ##############################################################################
 
 import wizard_set_products_campaign
+import wizard_print_tag_delivery

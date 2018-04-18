@@ -652,32 +652,22 @@ class mercadolibre_orders(models.Model):
     def orders_query_recent( self ):
         res = self.orders_query_iterate(0)
         return res
-    
-    @api.one
-    def get_tag_delivery(self):
-        self.ensure_one()
-        meli_util_model = self.env['meli.util']
-        company = self.env.user.company_id
-        meli = meli_util_model.get_new_instance(company)
-        params = {
-            'shipment_ids': self.shipping_id,
-            'response_type': 'pdf',
-            'access_token':meli.access_token,
-        }
-        orders_query = "/shipment_labels"
-        response = meli.get(orders_query, params)
-        return response.content
         
     @api.multi
     def action_print_tag_delivery(self):
-        self.ensure_one()
-        self.shipping_substatus = 'printed'
+        wizard_model = self.env['wizard.print.tag.delivery']
+        wizard = wizard_model.create({'meli_order_ids': [(6, 0, self.ids)]})
+        self.write({'shipping_substatus': 'printed'})
+        if len(self.ids) > 1:
+            file_name = "Etiquetas de Envio %s.pdf" % (fields.Datetime.to_string(fields.Datetime.context_timestamp(self, datetime.now())))
+        else:
+            file_name = "Etiqueta de Envio %s.pdf" % (self.shipping_id)
         return {'type': 'ir.actions.act_url',
                 'url': '/download/saveas?model=%(model)s&record_id=%(record_id)s&method=%(method)s&filename=%(filename)s' % {
-                    'filename': "Etiqueta de Envio %s.pdf" % (self.shipping_id),
-                    'model': self._name,
-                    'record_id': self.id,
-                    'method': 'get_tag_delivery',
+                    'filename': file_name,
+                    'model': wizard_model._name,
+                    'record_id': wizard.id,
+                    'method': 'get_tag_delivery_pdf',
                 },
                 'target': 'new',
         }

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+	<record id="action_meli_order_print_tag_delivery" model="ir.actions.server">
+		<field name="name">Imprimir Etiquetas de Envio MELI</field>
+		<field name="model_id" ref="meli_oerp.model_mercadolibre_orders" />
+		<field name="code">
+if records:
+	action = records.action_print_tag_delivery()
+		</field>
+	</record>
+
+	<record model="ir.values" id="action_meli_order_print_tag_delivery_values">
+		<field name="model_id" ref="meli_oerp.model_mercadolibre_orders" />
+		<field name="name">Imprimir Etiquetas de Envio MELI</field>
+		<field name="key2">client_action_multi</field>
+		<field name="value"
+			eval="'ir.actions.server,' +str(ref('action_meli_order_print_tag_delivery'))" />
+		<field name="key">action</field>
+		<field name="model">mercadolibre.orders</field>
+	</record>
+	
+	<record id="action_sale_order_print_tag_delivery" model="ir.actions.server">
+		<field name="name">Imprimir Etiquetas de Envio MELI</field>
+		<field name="model_id" ref="sale.model_sale_order" />
+		<field name="code">
+if records:
+	action = records.action_print_tag_delivery()
+		</field>
+	</record>
+
+	<record model="ir.values" id="action_sale_order_print_tag_delivery_values">
+		<field name="model_id" ref="sale.model_sale_order" />
+		<field name="name">Imprimir Etiquetas de Envio MELI</field>
+		<field name="key2">client_action_multi</field>
+		<field name="value"
+			eval="'ir.actions.server,' +str(ref('action_sale_order_print_tag_delivery'))" />
+		<field name="key">action</field>
+		<field name="model">sale.order</field>
+	</record>
+</odoo>

@@ -26,6 +26,7 @@
         'data/parameters_data.xml',
         'data/cron_jobs.xml',
         'data/email_template_data.xml',
+        'data/action_server_data.xml',
         'wizard/wizard_set_products_campaign_view.xml',
         'views/company_view.xml',
         'views/posting_view.xml',
