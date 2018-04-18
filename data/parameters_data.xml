@@ -21,6 +21,11 @@
 			<field name="key">meli_condition</field>
 			<field name="value">new</field>
 		</record>
+		
+		<record id="meli_days_synchro" model="ir.config_parameter">
+			<field name="key">meli_days_synchro</field>
+			<field name="value">5</field>
+		</record>
 
 	</data>
 </odoo>

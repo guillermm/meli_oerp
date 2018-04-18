@@ -23,6 +23,7 @@ import os
 import json
 import logging
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 _logger = logging.getLogger(__name__)
 
 try:
@@ -34,6 +35,7 @@ except ImportError:
 from odoo import fields, osv, models, api, tools
 import odoo.addons.decimal_precision as dp
 from odoo.tools import DEFAULT_SERVER_DATETIME_FORMAT as DTF
+from odoo.tools import DEFAULT_SERVER_DATE_FORMAT as DF
 
 #https://api.mercadolibre.com/questions/search?item_id=MLA508223205
 
@@ -595,6 +597,13 @@ class mercadolibre_orders(models.Model):
 
     def orders_query_iterate(self, offset=0, filter_by="paid"):
         meli_util_model = self.env['meli.util']
+        meli_days_last_synchro = self.env['ir.config_parameter'].get_param('meli_days_synchro', 5)
+        try:
+            meli_days_last_synchro = int(meli_days_last_synchro)
+        except:
+            meli_days_last_synchro = 5
+        #solo filtrar las ventas desde los ultimos N dias configurados(5 dias atras por defecto)
+        filter_date_from = fields.Date.from_string(fields.Date.context_today(self)) - relativedelta(days=meli_days_last_synchro)
         offset_next = 0
         company = self.env.user.company_id
         meli = meli_util_model.get_new_instance(company)
@@ -604,6 +613,7 @@ class mercadolibre_orders(models.Model):
             'access_token': meli.access_token,
             'seller': company.mercadolibre_seller_id,
             'sort': 'date_desc',
+            'order.date_created.from': '%sT00:00:00.000-00:00' % (filter_date_from.strftime(DF)),
         }
         if filter_by:
             params['order.status'] = filter_by
@@ -739,11 +749,19 @@ class mercadolibre_orders(models.Model):
     @api.model
     def action_validate_sale_order(self):
         PaymentModel = self.env['account.payment']
+        meli_days_last_synchro = self.env['ir.config_parameter'].get_param('meli_days_synchro', 5)
+        try:
+            meli_days_last_synchro = int(meli_days_last_synchro)
+        except:
+            meli_days_last_synchro = 5
+        #solo filtrar las ventas desde los ultimos N dias configurados(5 dias atras por defecto)
+        filter_date_from = fields.Date.from_string(fields.Date.context_today(self)) - relativedelta(days=meli_days_last_synchro)
         limit_meli = int(self.env['ir.config_parameter'].get_param('meli.order.limit', '100').strip())
         meli_orders = self.search([
             ('status','=', 'paid'),
             ('shipping_status','=', 'ready_to_ship'),
             ('shipping_substatus','=', 'printed'),
+            ('date_created', '>=', filter_date_from.strftime(DF)),
         ], limit=limit_meli)
         message_list = []
         current_document_info = ""
