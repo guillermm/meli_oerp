@@ -411,7 +411,7 @@ class mercadolibre_orders(models.Model):
         return product_find, variants_names
 
     @api.model
-    def _prepare_order_line_vals(self, order, meli_order_line_vals, posting, product, variants_names):
+    def _prepare_order_line_vals(self, order, meli_order_line_vals, product, variants_names):
         order_line_vals = {
             'order_id': order.id,
             'product_id': product.id,
@@ -425,9 +425,9 @@ class mercadolibre_orders(models.Model):
         return order_line_vals
         
     @api.model
-    def _add_order_line(self, order, meli_order_lines, post_related, product_find, variants_names):
+    def _add_order_line(self, order, meli_order_lines, product_find, variants_names):
         OrderItemModel = self.env['mercadolibre.order_items']
-        order_item_vals = self._prepare_order_line_vals(order, meli_order_lines, post_related, product_find, variants_names)
+        order_item_vals = self._prepare_order_line_vals(order, meli_order_lines, product_find, variants_names)
         OrderLine = OrderItemModel.search([
             ('order_item_id', '=', order_item_vals['order_item_id']),
             ('order_id','=',order.id),
@@ -545,17 +545,17 @@ class mercadolibre_orders(models.Model):
                 need_review = False
                 for Item in order_json['order_items']:
                     _logger.info(Item)
-                    post_related = PostingModel.search([('meli_id','=',Item['item']['id'])])
-                    if not post_related:
-                        notes.append(("ERROR Buscando producto", "*Producto: %s con ID: %s no existe" % (Item['item']['title'], Item['item']['id'])))
-                        need_review = True
-                        continue
+#                     post_related = PostingModel.search([('meli_id','=',Item['item']['id'])])
+#                     if not post_related:
+#                         notes.append(("ERROR Buscando producto", "*Producto: %s con ID: %s no existe" % (Item['item']['title'], Item['item']['id'])))
+#                         need_review = True
+#                         continue
                     product_find, variants_names = self._find_product(Item)
                     if not product_find:
                         notes.append(("ERROR Buscando producto", "*Producto: %s con ID: %s no existe" % (Item['item']['title'], Item['item']['id'])))
                         need_review = True
                         continue
-                    self._add_order_line(meli_order, Item, post_related, product_find, variants_names)
+                    self._add_order_line(meli_order, Item, product_find, variants_names)
             if 'payments' in order_json:
                 for meli_payment_vals in order_json['payments']:
                     self._add_payment(meli_order, meli_payment_vals)
