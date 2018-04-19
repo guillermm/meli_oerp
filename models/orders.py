@@ -547,12 +547,12 @@ class mercadolibre_orders(models.Model):
                 _logger.info(Item)
                 post_related = PostingModel.search([('meli_id','=',Item['item']['id'])])
                 if not post_related:
-                    notes.append("*Producto: %s con ID: %s no existe" % (Item['item']['title'], Item['item']['id']))
+                    notes.append(("ERROR Buscando producto", "*Producto: %s con ID: %s no existe" % (Item['item']['title'], Item['item']['id'])))
                     need_review = True
                     continue
                 product_find, variants_names = self._find_product(Item)
                 if not product_find:
-                    notes.append("*Producto: %s con ID: %s no existe" % (Item['item']['title'], Item['item']['id']))
+                    notes.append(("ERROR Buscando producto", "*Producto: %s con ID: %s no existe" % (Item['item']['title'], Item['item']['id'])))
                     need_review = True
                     continue
                 self._add_order_line(meli_order, Item, post_related, product_find, variants_names)
@@ -564,7 +564,7 @@ class mercadolibre_orders(models.Model):
             notes.extend(message_list)
             meli_order.write({
                 'need_review': need_review,
-                'note': "".join(notes),
+                'note': "".join([msj[1] for msj in notes]),
             })
             template_mail = self.env.ref('meli_oerp.et_new_meli_order', False)
             if send_mail and template_mail and not notes:
@@ -572,7 +572,7 @@ class mercadolibre_orders(models.Model):
         else:
             meli_order.write({
                 'need_review': need_review,
-                'note': "".join(notes),
+                'note': "".join([msj[1] for msj in notes]),
             })
         return meli_order, notes
 
