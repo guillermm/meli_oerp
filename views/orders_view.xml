@@ -73,9 +73,11 @@
 					<header>
 						<button name="action_print_tag_delivery" string="Imprimir Etiqueta de despacho"
 							type="object" class="oe_highlight"
+							groups="meli_oerp.group_meli_user_basic"
 							attrs="{'invisible': ['|', '|', ('shipping_status','!=','ready_to_ship'), ('shipping_id','=',False), ('shipping_substatus','!=','ready_to_print')]}" />
 						<button name="action_print_tag_delivery" string="ReImprimir Etiqueta de despacho"
 							type="object"
+							groups="meli_oerp.group_meli_user_basic"
 							attrs="{'invisible': ['|', '|', ('shipping_status','!=','ready_to_ship'), ('shipping_id','=',False), ('shipping_substatus','!=','printed')]}" />
 						<field name="status" widget="statusbar" statusbar_visible="confirmed,paid" />
 					</header>
@@ -283,13 +285,13 @@
 		</record>
 
 		<menuitem id="menu_meli" name="MercadoLibre" parent="sales_team.menu_base_partner"
-			sequence="9" groups="meli_oerp.group_meli_user" />
+			sequence="9" groups="meli_oerp.group_meli_user,meli_oerp.group_meli_user_basic" />
 
 		<menuitem id="menu_meli_orders" action="action_meli_orders_tree"
-			parent="menu_meli" name="Orders" />
+			parent="menu_meli" name="Orders" groups="meli_oerp.group_meli_user_basic" />
 
 		<menuitem id="menu_meli_buyers" action="action_meli_buyers_tree"
-			parent="menu_meli" name="Buyers" />
+			parent="menu_meli" name="Buyers" groups="meli_oerp.group_meli_user"/>
 
 	</data>
 </odoo>

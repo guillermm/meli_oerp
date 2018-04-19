@@ -89,7 +89,7 @@
 		</record>
 
 		<menuitem id="menu_meli_categories" action="action_meli_categories_tree"
-			parent="menu_meli" name="Categories" />
+			parent="menu_meli" name="Categories" groups="meli_oerp.group_meli_user" />
 
 	</data>
 </odoo>

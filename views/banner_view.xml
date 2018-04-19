@@ -39,7 +39,7 @@
 		</record>
 
 		<menuitem id="menu_meli_banners" action="action_meli_banners_tree"
-			parent="menu_meli" name="Banners" />
+			parent="menu_meli" name="Banners" groups="meli_oerp.group_meli_user" />
 
 	</data>
 </odoo>

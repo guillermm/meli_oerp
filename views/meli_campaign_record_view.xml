@@ -177,7 +177,7 @@
 		</record>
 
 		<menuitem id="meli_campaign_record_menu" name="Publicacion de Ofertas"
-			sequence="17" parent="menu_meli" action="meli_campaign_record_action" />
+			sequence="17" parent="menu_meli" action="meli_campaign_record_action" groups="meli_oerp.group_meli_user" />
 
 	</data>
 </odoo>

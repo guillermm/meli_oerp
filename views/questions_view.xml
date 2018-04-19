@@ -74,7 +74,7 @@
 			sequence="9" />
 
 		<menuitem id="menu_meli_questions" action="action_meli_questions_tree"
-			parent="menu_meli" name="Questions" />
+			parent="menu_meli" name="Questions" groups="meli_oerp.group_meli_user" />
 
 	</data>
 </odoo>

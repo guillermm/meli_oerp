@@ -6,19 +6,19 @@
 			<field name="name">sale.order.tree</field>
 			<field name="model">sale.order</field>
 			<field name="inherit_id" ref="sale.view_quotation_tree" />
-			<field name="groups_id" eval="[(6, 0, [(ref('meli_oerp.group_meli_user'))])]" />
+			<field name="groups_id" eval="[(6, 0, [(ref('meli_oerp.group_meli_user_basic'))])]" />
 			<field name="arch" type="xml">
 				<xpath expr="/tree" position="attributes">
 					<attribute name="decoration-success">shipping_status  in ('shipped', 'delivered')</attribute>
 					<attribute name="decoration-info">shipping_status== 'ready_to_ship' and meli_status=='paid' and shipping_substatus!='ready_to_print'</attribute>
 				</xpath>
 				<field name="name" position="after">
-					<field name="meli_order_id" groups="meli_oerp.group_meli_user" />
+					<field name="meli_order_id" groups="meli_oerp.group_meli_user_basic" />
 				</field>
 				<field name="state" position="after">
-					<field name="meli_status" groups="meli_oerp.group_meli_user" />
-					<field name="shipping_status" groups="meli_oerp.group_meli_user" />
-					<field name="shipping_substatus" groups="meli_oerp.group_meli_user" />
+					<field name="meli_status" groups="meli_oerp.group_meli_user_basic" />
+					<field name="shipping_status" groups="meli_oerp.group_meli_user_basic" />
+					<field name="shipping_substatus" groups="meli_oerp.group_meli_user_basic" />
 				</field>
 			</field>
 		</record>
@@ -27,19 +27,19 @@
 			<field name="name">sale.order.tree</field>
 			<field name="model">sale.order</field>
 			<field name="inherit_id" ref="sale.view_order_tree" />
-			<field name="groups_id" eval="[(6, 0, [(ref('meli_oerp.group_meli_user'))])]" />
+			<field name="groups_id" eval="[(6, 0, [(ref('meli_oerp.group_meli_user_basic'))])]" />
 			<field name="arch" type="xml">
 				<xpath expr="/tree" position="attributes">
 					<attribute name="decoration-success">shipping_status  in ('shipped', 'delivered')</attribute>
 					<attribute name="decoration-info">shipping_status== 'ready_to_ship' and meli_status=='paid' and shipping_substatus!='ready_to_print'</attribute>
 				</xpath>
 				<field name="name" position="after">
-					<field name="meli_order_id" groups="meli_oerp.group_meli_user" />
+					<field name="meli_order_id" groups="meli_oerp.group_meli_user_basic" />
 				</field>
 				<field name="state" position="after">
-					<field name="meli_status" groups="meli_oerp.group_meli_user" />
-					<field name="shipping_status" groups="meli_oerp.group_meli_user" />
-					<field name="shipping_substatus" groups="meli_oerp.group_meli_user" />
+					<field name="meli_status" groups="meli_oerp.group_meli_user_basic" />
+					<field name="shipping_status" groups="meli_oerp.group_meli_user_basic" />
+					<field name="shipping_substatus" groups="meli_oerp.group_meli_user_basic" />
 				</field>
 			</field>
 		</record>
@@ -91,7 +91,7 @@
 			<field name="name">sale.order.search</field>
 			<field name="model">sale.order</field>
 			<field name="inherit_id" ref="sale.view_sales_order_filter" />
-			<field name="groups_id" eval="[(6, 0, [(ref('meli_oerp.group_meli_user'))])]" />
+			<field name="groups_id" eval="[(6, 0, [(ref('meli_oerp.group_meli_user_basic'))])]" />
 			<field name="arch" type="xml">
 				<field name="name" position="after">
 					<field name="meli_order_id" />
