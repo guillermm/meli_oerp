@@ -496,7 +496,6 @@ class mercadolibre_orders(models.Model):
 
     def orders_update_order_json( self, data, context=None ):
         order_json = data["order_json"]
-        _logger.info("orders_update_order_json > data: " + str(order_json))
         PartnerModel = self.env['res.partner']
         MeliOrderModel = self.env['mercadolibre.orders']
         PostingModel = self.env['mercadolibre.posting']
@@ -505,75 +504,79 @@ class mercadolibre_orders(models.Model):
         send_mail = False
         need_review = False
         meli_order = MeliOrderModel.search([('order_id','=',order_json['id'])], limit=1)
-        order_vals = self._prepare_order_vals(order_json)
-        if 'buyer' in order_json:
-            Buyer = order_json['buyer']
-            document_number =False
-            if Buyer['billing_info'].get('doc_number'):
-                document_number = Buyer['billing_info'].get('doc_number')
-                document_number = self._pre_process_document_number(document_number)
-            if not document_number:
-                msj = "*Cliente: %s %s con ID: %s no tiene Informacion tributaria(RUT, Tipo de documento)" % \
-                    (Buyer.get('first_name'), Buyer.get('last_name'), Buyer.get('id'))
-                notes.append(("ERROR Creando Cliente", msj))
-                need_review = True
-                _logger.error(msj)
-                return meli_order, notes
-            buyer = self._find_create_buyer(Buyer, document_number)
-            partner = self._find_create_partner(Buyer, document_number)
-            order_vals['buyer'] = buyer.id
-            if not buyer.partner_id:
-                buyer.partner_id = partner
-        #process base meli_order fields
-        if (order_json["shipping"]):
-            order_vals['shipping'] = self.pretty_json( id, order_json["shipping"] )
-            shipping_values = self.prepare_values_shipping(order_json["shipping"])
-            order_vals.update(shipping_values)
-            order_vals['partner_id'] = partner.id
-        #create or update meli_order
-        if (meli_order):
-            _logger.info("Updating meli orden: %s", meli_order.id)
-            meli_order.write(order_vals)
-        else:
-            _logger.info("Adding new meli order: %s", str(order_vals))
-            meli_order = MeliOrderModel.create(order_vals)
-            if meli_order.status == 'paid':
-                send_mail = True
-        #update internal fields (items, payments, buyers)
-        if 'order_items' in order_json:
-            notes = []
-            need_review = False
-            for Item in order_json['order_items']:
-                _logger.info(Item)
-                post_related = PostingModel.search([('meli_id','=',Item['item']['id'])])
-                if not post_related:
-                    notes.append(("ERROR Buscando producto", "*Producto: %s con ID: %s no existe" % (Item['item']['title'], Item['item']['id'])))
+        try:
+            order_vals = self._prepare_order_vals(order_json)
+            if 'buyer' in order_json:
+                Buyer = order_json['buyer']
+                document_number =False
+                if Buyer['billing_info'].get('doc_number'):
+                    document_number = Buyer['billing_info'].get('doc_number')
+                    document_number = self._pre_process_document_number(document_number)
+                if not document_number:
+                    msj = "*Cliente: %s %s con ID: %s no tiene Informacion tributaria(RUT, Tipo de documento)" % \
+                        (Buyer.get('first_name'), Buyer.get('last_name'), Buyer.get('id'))
+                    notes.append(("ERROR Creando Cliente", msj))
                     need_review = True
-                    continue
-                product_find, variants_names = self._find_product(Item)
-                if not product_find:
-                    notes.append(("ERROR Buscando producto", "*Producto: %s con ID: %s no existe" % (Item['item']['title'], Item['item']['id'])))
-                    need_review = True
-                    continue
-                self._add_order_line(meli_order, Item, post_related, product_find, variants_names)
-        if 'payments' in order_json:
-            for meli_payment_vals in order_json['payments']:
-                self._add_payment(meli_order, meli_payment_vals)
-        if meli_order.order_items:
-            sale_order, message_list = meli_order._find_create_sale_order()
-            notes.extend(message_list)
-            meli_order.write({
-                'need_review': need_review,
-                'note': "".join([msj[1] for msj in notes]),
-            })
-            template_mail = self.env.ref('meli_oerp.et_new_meli_order', False)
-            if send_mail and template_mail and not notes:
-                template_mail.send_mail(meli_order.id, force_send=True)
-        else:
-            meli_order.write({
-                'need_review': need_review,
-                'note': "".join([msj[1] for msj in notes]),
-            })
+                    _logger.error(msj)
+                    return meli_order, notes
+                buyer = self._find_create_buyer(Buyer, document_number)
+                partner = self._find_create_partner(Buyer, document_number)
+                order_vals['buyer'] = buyer.id
+                if not buyer.partner_id:
+                    buyer.partner_id = partner
+            #process base meli_order fields
+            if (order_json["shipping"]):
+                order_vals['shipping'] = self.pretty_json( id, order_json["shipping"] )
+                shipping_values = self.prepare_values_shipping(order_json["shipping"])
+                order_vals.update(shipping_values)
+                order_vals['partner_id'] = partner.id
+            #create or update meli_order
+            if (meli_order):
+                _logger.info("Updating meli orden: %s", meli_order.id)
+                meli_order.write(order_vals)
+            else:
+                _logger.info("Adding new meli order: %s", str(order_vals))
+                meli_order = MeliOrderModel.create(order_vals)
+                if meli_order.status == 'paid':
+                    send_mail = True
+            #update internal fields (items, payments, buyers)
+            if 'order_items' in order_json:
+                notes = []
+                need_review = False
+                for Item in order_json['order_items']:
+                    _logger.info(Item)
+                    post_related = PostingModel.search([('meli_id','=',Item['item']['id'])])
+                    if not post_related:
+                        notes.append(("ERROR Buscando producto", "*Producto: %s con ID: %s no existe" % (Item['item']['title'], Item['item']['id'])))
+                        need_review = True
+                        continue
+                    product_find, variants_names = self._find_product(Item)
+                    if not product_find:
+                        notes.append(("ERROR Buscando producto", "*Producto: %s con ID: %s no existe" % (Item['item']['title'], Item['item']['id'])))
+                        need_review = True
+                        continue
+                    self._add_order_line(meli_order, Item, post_related, product_find, variants_names)
+            if 'payments' in order_json:
+                for meli_payment_vals in order_json['payments']:
+                    self._add_payment(meli_order, meli_payment_vals)
+            if meli_order.order_items:
+                sale_order, message_list = meli_order._find_create_sale_order()
+                notes.extend(message_list)
+                meli_order.write({
+                    'need_review': need_review,
+                    'note': "".join([msj[1] for msj in notes]),
+                })
+                template_mail = self.env.ref('meli_oerp.et_new_meli_order', False)
+                if send_mail and template_mail and not notes:
+                    template_mail.send_mail(meli_order.id, force_send=True)
+            else:
+                meli_order.write({
+                    'need_review': need_review,
+                    'note': "".join([msj[1] for msj in notes]),
+                })
+        except Exception, e:
+            _logger.error(tools.ustr(e))
+            message_list.append(("Error descargando Pedido", tools.ustr(e)))
         return meli_order, notes
 
     def orders_update_order( self, context=None ):
