@@ -244,7 +244,6 @@ class mercadolibre_orders(models.Model):
         buyer_vals = self._prepare_buyer_vals(meli_buyer_vals, document_number)
         buyer_find = BuyerModel.search([('buyer_id', '=', buyer_vals['buyer_id'])], limit=1)
         if not buyer_find:
-            _logger.info("creating buyer: %s", str(buyer_vals))
             buyer_find = BuyerModel.create(buyer_vals)
         return buyer_find
     
@@ -268,7 +267,6 @@ class mercadolibre_orders(models.Model):
         partner_vals = self._prepare_partner_vals(meli_buyer_vals, document_number)
         partner_find = partnerModel.search([('meli_buyer_id', '=', partner_vals['meli_buyer_id'])], limit=1)
         if not partner_find:
-            _logger.info("creating partner: %s", str(partner_vals))
             partner_find = partnerModel.create(partner_vals)
         return partner_find
 
@@ -482,7 +480,6 @@ class mercadolibre_orders(models.Model):
     @api.model
     def _add_payment(self, order, meli_payment_vals):
         Payments = self.env['mercadolibre.payments']
-        _logger.info(meli_payment_vals)
         payment_vals = self._prepare_payment_vals(order, meli_payment_vals)
         payment = Payments.search([
             ('payment_id', '=', payment_vals['payment_id']),
@@ -543,12 +540,6 @@ class mercadolibre_orders(models.Model):
                 notes = []
                 need_review = False
                 for Item in order_json['order_items']:
-                    _logger.info(Item)
-#                     post_related = PostingModel.search([('meli_id','=',Item['item']['id'])])
-#                     if not post_related:
-#                         notes.append(("ERROR Buscando producto", "*Producto: %s con ID: %s no existe" % (Item['item']['title'], Item['item']['id'])))
-#                         need_review = True
-#                         continue
                     product_find, variants_names = self._find_product(Item)
                     if not product_find:
                         notes.append(("ERROR Buscando producto", "*Producto: %s con ID: %s no existe" % (Item['item']['title'], Item['item']['id'])))
@@ -627,13 +618,6 @@ class mercadolibre_orders(models.Model):
             if (orders_json["message"]=="invalid_token"):
                 _logger.error( orders_json["message"] )
             return message_list
-        _logger.info( orders_json )
-        #testing with json:
-        if (True==False):
-            with open('/home/fabricio/envOdoo8/sources/meli_oerp/orders.json') as json_data:
-                _logger.info( json_data )
-                orders_json = json.load(json_data)
-                _logger.info( orders_json )
         if "paging" in orders_json:
             if "total" in orders_json["paging"]:
                 if (orders_json["paging"]["total"]==0):
@@ -644,7 +628,6 @@ class mercadolibre_orders(models.Model):
         if "results" in orders_json:
             for order_json in orders_json["results"]:
                 if order_json:
-                    _logger.info( order_json )
                     pdata = {"id": False, "order_json": order_json}
                     meli_order, message_list = self.orders_update_order_json(pdata)
         if (offset_next>0):
