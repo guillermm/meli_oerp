@@ -498,7 +498,6 @@ class mercadolibre_orders(models.Model):
         order_json = data["order_json"]
         PartnerModel = self.env['res.partner']
         MeliOrderModel = self.env['mercadolibre.orders']
-        PostingModel = self.env['mercadolibre.posting']
         partner = PartnerModel.browse()
         notes = []
         send_mail = False
@@ -576,7 +575,7 @@ class mercadolibre_orders(models.Model):
                 })
         except Exception, e:
             _logger.error(tools.ustr(e))
-            message_list.append(("Error descargando Pedido", tools.ustr(e)))
+            notes.append(("Error descargando Pedido", tools.ustr(e)))
         return meli_order, notes
 
     def orders_update_order( self, context=None ):
@@ -826,7 +825,7 @@ class MercadolibreOrderItems(models.Model):
     _name = "mercadolibre.order_items"
     _description = "Producto pedido en MercadoLibre"
 
-    order_id = fields.Many2one("mercadolibre.orders","Order")
+    order_id = fields.Many2one("mercadolibre.orders","Order", ondelete="cascade")
     product_id = fields.Many2one('product.product', u'Producto', ondelete="restrict", index=True)
     order_item_id = fields.Char('Item Id')
     order_item_title = fields.Char('Item Title')
@@ -840,7 +839,7 @@ class MercadolibrePayments(models.Model):
     _name = "mercadolibre.payments"
     _description = "Pagos en MercadoLibre"
 
-    order_id = fields.Many2one("mercadolibre.orders","Order")
+    order_id = fields.Many2one("mercadolibre.orders","Order", ondelete="cascade")
     payment_id = fields.Char('Payment Id')
     transaction_amount = fields.Char('Transaction Amount')
     currency_id = fields.Char(string='Currency')
