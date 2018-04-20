@@ -169,6 +169,7 @@ class mercadolibre_orders(models.Model):
     ], string=u'Metodo de envio', readonly=True)
     note = fields.Html(u'Notas', readonly=True, copy=False)
     need_review = fields.Boolean(u'Necesita Revision?', readonly=True, copy=False)
+    need_credit_note = fields.Boolean(u'Necesita Nota de Credito?', readonly=True, copy=False)
 
     def billing_info( self, billing_json, context=None ):
         billinginfo = ''
@@ -629,14 +630,114 @@ class mercadolibre_orders(models.Model):
             for order_json in orders_json["results"]:
                 if order_json:
                     pdata = {"id": False, "order_json": order_json}
-                    meli_order, message_list = self.orders_update_order_json(pdata)
+                    if self._is_order_cancelled(order_json):
+                        meli_order, msj = self._action_cancel_order(pdata)
+                        message_list.extend(msj)
+                    else:
+                        meli_order, msj = self.orders_update_order_json(pdata)
+                        message_list.extend(msj)
         if (offset_next>0):
-            message_list.extend(self.orders_query_iterate(offset_next))
+            message_list.extend(self.orders_query_iterate(offset_next, filter_by))
         return message_list
 
-    def orders_query_recent( self ):
+    def orders_query_recent(self):
         res = self.orders_query_iterate(0)
         return res
+    
+    @api.model
+    def _is_order_cancelled(self, order_json):
+        #se considera un pedido cancelado cuando:
+        #*estado = confirmed y no hay pagos O los pagos esten en estado returned,
+        #o el estado sea explicito cancelled, invalid
+        is_order_cancelled = False
+        if order_json.get('status') in ['cancelled', 'invalid']:
+            is_order_cancelled = True
+        elif order_json.get('status') == 'confirmed':
+            has_payments = False
+            has_refund = False
+            for payment in order_json.get('payments'):
+                if payment.get('status') == 'approved':
+                    has_payments = True
+                elif payment.get('status') == 'refunded':
+                    has_refund = True
+            if not has_payments:
+                is_order_cancelled = True
+            elif has_refund:
+                is_order_cancelled = True
+        return is_order_cancelled
+    
+    @api.model
+    def _action_cancel_order(self, data):
+        order_json = data["order_json"]
+        message_list = []
+        current_document_info = ""
+        meli_order = self.search([
+            ('order_id','=',order_json['id']),
+            ('status', '!=', 'cancelled'),
+            #no traer los q necesitan NC, xq no se cancelan a nivel de estado en el ERP pero estan anulados en meli
+            ('need_credit_note', '=', False),
+        ], limit=1)
+        #puede que un pedido cancelado nunca se haya creado en el sistema
+        #no hacer nada o crearlo en estado cancelado, para estadisticas???
+        if meli_order and meli_order.sale_order_id:
+            sale_order = meli_order.sale_order_id
+            need_credit_note = False
+            #si el pedido de venta ya esta cancelado, no hacer nada
+            #caso contrario, enviar a cancelar el picking y el pedido de venta
+            if sale_order.state != 'cancel':
+                current_document_info = "Anulando Pedido de Venta ID: %s Numero: %s" % (sale_order.id, sale_order.name)
+                _logger.info(current_document_info)
+                #si el pedido de venta ya tiene factura, no cancelar el pedido, se debe hacer nota de credito manualmente
+                if sale_order.invoice_ids:
+                    need_credit_note = True
+                    _logger.info("Pedido Facturado, debe emitir Nota de Credito")
+                    message_list.append((current_document_info, "Pedido Facturado, debe emitir Nota de Credito"))
+                else:
+                    try:
+                        for picking in sale_order.picking_ids:
+                            picking.action_cancel()
+                        sale_order.action_cancel()
+                        _logger.info("Cancelado con exito el Pedido de Venta ID: %s Numero: %s" % (sale_order.id, sale_order.name))
+                    except Exception, e:
+                        _logger.error(current_document_info)
+                        _logger.error(tools.ustr(e))
+                        message_list.append((current_document_info, tools.ustr(e)))
+            if meli_order.status != 'cancelled':
+                current_document_info = "Anulando Pedido de Venta MELI ID: %s Numero: %s" % (meli_order.id, meli_order.order_id)
+                _logger.info(current_document_info)
+                try:
+                    #actualizar los pagos para q se marquen como rechazado/devueltos, etc
+                    for payment in order_json.get('payments'):
+                        self._add_payment(meli_order, payment)
+                    if need_credit_note:
+                        meli_order.write({'need_credit_note': need_credit_note})
+                    else:
+                        meli_order.write({'status': 'cancelled'})
+                    _logger.info("Cancelado con exito el Pedido de Venta MELI ID: %s Numero: %s" % (meli_order.id, meli_order.order_id))
+                except Exception, e:
+                    _logger.error(current_document_info)
+                    _logger.error(tools.ustr(e))
+                    message_list.append((current_document_info, tools.ustr(e)))
+        return meli_order, message_list
+    
+    @api.model
+    def action_cancel_orders(self):
+        #ordenes en estado confirmed sin pagos aprobados meli las considera canceladas
+        message_list = self.orders_query_iterate(filter_by='confirmed')
+        message_list.extend(self.orders_query_iterate(filter_by='cancelled'))
+        message_list.extend(self.orders_query_iterate(filter_by='invalid'))
+        if message_list and csv:
+            file_path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'logs'))
+            if not os.path.exists(file_path):
+                os.makedirs(file_path)
+            file_path = os.path.join(file_path, "cancelar_pedidos_meli_%s.csv" % fields.Datetime.context_timestamp(self, datetime.now()).strftime('%Y_%m_%d_%H_%M_%S'))
+            fp = open(file_path,'wb')
+            csv_file = csv.writer(fp, quotechar='"', quoting=csv.QUOTE_ALL)
+            csv_file.writerow(['Mensaje', 'Detalle'])
+            for line in message_list:
+                csv_file.writerow([line[0], line[1]])
+            fp.close()
+        return True
         
     @api.multi
     def action_print_tag_delivery(self):

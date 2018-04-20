@@ -64,6 +64,22 @@
 				eval="(datetime.now() + relativedelta(hours=1, minute=45, second=0)).strftime('%Y-%m-%d %H:%M:%S')" />
 		</record>
 		
+		<record id="ir_cron_cancel_orders_meli" model="ir.cron"
+			forcecreate="True">
+			<field name="name">Cancelar Pedidos MELI</field>
+			<field eval="True" name="active" />
+			<field name="user_id" ref="base.user_root" />
+			<field name="interval_number">1</field>
+			<field name="interval_type">hours</field>
+			<field name="numbercall">-1</field>
+			<field name="doall" eval="False" />
+			<field name="model" eval="'mercadolibre.orders'" />
+			<field name="function" eval="'action_cancel_orders'" />
+			<field name="priority">35</field>
+			<field name="nextcall"
+				eval="(datetime.now() + relativedelta(hours=1, minute=55, second=0)).strftime('%Y-%m-%d %H:%M:%S')" />
+		</record>
+		
 		<record id="ir_cron_module_get_meli_state" model="ir.cron">
               <field name="name">Get Meli State</field>
               <field eval="True" name="active" />
