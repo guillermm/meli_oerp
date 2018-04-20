@@ -682,6 +682,7 @@ class mercadolibre_orders(models.Model):
         if meli_order and meli_order.sale_order_id:
             sale_order = meli_order.sale_order_id
             need_credit_note = False
+            sent_mail_cancel = False
             #si el pedido de venta ya esta cancelado, no hacer nada
             #caso contrario, enviar a cancelar el picking y el pedido de venta
             if sale_order.state != 'cancel':
@@ -690,6 +691,9 @@ class mercadolibre_orders(models.Model):
                 #si el pedido de venta ya tiene factura, no cancelar el pedido, se debe hacer nota de credito manualmente
                 if sale_order.invoice_ids:
                     need_credit_note = True
+                    template_mail = self.env.ref('meli_oerp.et_meli_order_need_cn', False)
+                    if template_mail:
+                        template_mail.send_mail(meli_order.id, force_send=True)
                     _logger.info("Pedido Facturado, debe emitir Nota de Credito")
                     message_list.append((current_document_info, "Pedido Facturado, debe emitir Nota de Credito"))
                 else:
@@ -697,6 +701,7 @@ class mercadolibre_orders(models.Model):
                         for picking in sale_order.picking_ids:
                             picking.action_cancel()
                         sale_order.action_cancel()
+                        sent_mail_cancel = True
                         _logger.info("Cancelado con exito el Pedido de Venta ID: %s Numero: %s" % (sale_order.id, sale_order.name))
                     except Exception, e:
                         _logger.error(current_document_info)
@@ -713,11 +718,16 @@ class mercadolibre_orders(models.Model):
                         meli_order.write({'need_credit_note': need_credit_note})
                     else:
                         meli_order.write({'status': 'cancelled'})
+                        sent_mail_cancel = True
                     _logger.info("Cancelado con exito el Pedido de Venta MELI ID: %s Numero: %s" % (meli_order.id, meli_order.order_id))
                 except Exception, e:
                     _logger.error(current_document_info)
                     _logger.error(tools.ustr(e))
                     message_list.append((current_document_info, tools.ustr(e)))
+            if sent_mail_cancel:
+                template_mail = self.env.ref('meli_oerp.et_meli_order_cancelled', False)
+                if template_mail:
+                    template_mail.send_mail(meli_order.id, force_send=True)
         return meli_order, message_list
     
     @api.model

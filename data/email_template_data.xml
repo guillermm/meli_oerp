@@ -48,6 +48,54 @@ Database : ${ctx.get('dbname')}
 </center>
 </div></field>
 		</record>
+		
+		<record id="et_meli_order_cancelled" model="mail.template">
+            <field name="name">Pedido de venta Meli ANULADO</field>
+            <field name="email_from">${user.email or ''}</field>
+            <field name="email_to">${user.email or ''}</field>
+            <field name="subject">ANULACION de Pedido de Venta MELI ${object.order_id or ''}</field>
+            <field name="model_id" ref="meli_oerp.model_mercadolibre_orders"/>
+            <field name="auto_delete" eval="True"/>
+            <field name="body_html" type="html">
+<div>
+<p>Se ha anulado el siguiente pedido de meli</p>
+% set access_url = object.get_signup_url_meli()
+<ul>
+<li><strong>ID MELI: </strong> ${object.order_id}</li>
+<li><strong>Pedido de Venta: </strong> ${object.sale_order_id.name}</li>
+<li><strong>Cliente: </strong> ${object.partner_id.name}</li>
+<li><strong>Total: </strong> ${object.total_amount}</li>
+</ul>
+<br/><br/>
+<center>
+  <a href="${access_url}" style="background-color: #1abc9c; padding: 20px; text-decoration: none; color: #fff; border-radius: 5px; font-size: 16px;" class="o_default_snippet_text">Ver Documento</a>
+</center>
+</div></field>
+		</record>
+		
+		<record id="et_meli_order_need_cn" model="mail.template">
+            <field name="name">Pedido de venta Meli Require Nota de Credito</field>
+            <field name="email_from">${user.email or ''}</field>
+            <field name="email_to">${user.email or ''}</field>
+            <field name="subject">ANULACION con Nota de Credito de Pedido de Venta MELI ${object.order_id or ''}</field>
+            <field name="model_id" ref="meli_oerp.model_mercadolibre_orders"/>
+            <field name="auto_delete" eval="True"/>
+            <field name="body_html" type="html">
+<div>
+<p>Se intento anular el siguiente pedido de meli pero tenia facturas, se recomienda emitir una Nota de Credito</p>
+% set access_url = object.get_signup_url_meli()
+<ul>
+<li><strong>ID MELI: </strong> ${object.order_id}</li>
+<li><strong>Pedido de Venta: </strong> ${object.sale_order_id.name}</li>
+<li><strong>Cliente: </strong> ${object.partner_id.name}</li>
+<li><strong>Total: </strong> ${object.total_amount}</li>
+</ul>
+<br/><br/>
+<center>
+  <a href="${access_url}" style="background-color: #1abc9c; padding: 20px; text-decoration: none; color: #fff; border-radius: 5px; font-size: 16px;" class="o_default_snippet_text">Ver Documento</a>
+</center>
+</div></field>
+		</record>
 
 	</data>
 </odoo>
