@@ -20,7 +20,7 @@ class MeliCampaignRecord(models.Model):
     description = fields.Text(string=u'Descripcion',
         readonly=True, states={'draft':[('readonly',False)]})
     line_ids = fields.One2many('meli.campaign.record.line', 
-        'meli_campaign_id', u'Productos en Oferta', copy=False)
+        'meli_campaign_id', u'Productos en Oferta', copy=False, auto_join=True)
     state = fields.Selection([
         ('draft','Borrador'),
         ('pending_approval','Enviado a Meli/Esperando Aprobacion'),
@@ -108,8 +108,10 @@ class MeliCampaignRecordLine(models.Model):
     _name = 'meli.campaign.record.line'
     _description = u'Productos o Ofertar en Campañas'
     
-    meli_campaign_id = fields.Many2one('meli.campaign.record', u'Registro de Campaña', ondelete="cascade")
-    product_template_id = fields.Many2one('product.template', u'Plantilla de Producto', ondelete="restrict")
+    meli_campaign_id = fields.Many2one('meli.campaign.record', 
+        u'Registro de Campaña', ondelete="cascade", auto_join=True)
+    product_template_id = fields.Many2one('product.template', 
+        u'Plantilla de Producto', ondelete="restrict", auto_join=True)
     price_unit = fields.Float(u'Precio Unitario', digits=dp.get_precision('Product Price'))
     list_price = fields.Float(u'Precio Unitario(Tarifa)', digits=dp.get_precision('Product Price'))
     meli_price = fields.Float(u'Precio Unitario(MELI)', digits=dp.get_precision('Product Price'))
@@ -117,7 +119,7 @@ class MeliCampaignRecordLine(models.Model):
     declared_oro_premium_full = fields.Boolean(u'Premium?')
     declared_stock = fields.Float(u'Stock Declarado', digits=dp.get_precision('Product Unit of Measure'))
     review_reasons_ids = fields.One2many('meli.campaign.record.review.reason', 
-        'meli_campaign_line_id', u'Razones de Revision', readonly=True, copy=False)
+        'meli_campaign_line_id', u'Razones de Revision', readonly=True, copy=False, auto_join=True)
     state = fields.Selection([
         ('draft','Borrador'),
         ('pending_approval', 'Enviado a Meli/Esperando Aprobacion'),
@@ -156,7 +158,7 @@ class MeliCampaignRecordLine(models.Model):
             for review in rjson.get('review_reasons', []):
                 review_reason.append((0, 0, {
                     'reason_type': review.get('reason_type', ''),
-                    'reason_requisite': review.get('requisite', {}).get('name', ''),
+                    'reason_requisite': (review.get('requisite') or {}).get('name', ''),
                     'message_key': review.get('message_key', ''),
                     }))
             if vals_line:
@@ -218,7 +220,8 @@ class MeliCampaignRecordRevisionReason(models.Model):
     _name = 'meli.campaign.record.review.reason'
     _description = u'Razones de Revision en Ofertas'
     
-    meli_campaign_line_id = fields.Many2one('meli.campaign.record.line', u'Producto en Oferta', ondelete="cascade")
+    meli_campaign_line_id = fields.Many2one('meli.campaign.record.line', 
+        u'Producto en Oferta', ondelete="cascade", auto_join=True)
     reason_type = fields.Char(u'Tipo de Razon')
     reason_requisite = fields.Char(u'Requisito')
     message_key = fields.Char(u'Mensaje')
