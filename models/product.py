@@ -1059,7 +1059,7 @@ class ProductTemplate(models.Model):
                     args.append(('id', 'not in', product_ids))
         res = super(ProductTemplate, self)._search(args=args, offset=offset, limit=limit, order=order, count=count, access_rights_uid=access_rights_uid)
         if self.env.context.get('filter_product_meli_campaign') and self.env.context.get('filter_product_action_type') == 'add' and not count:
-            res = self.browse(res).filtered(lambda x: not x.meli_state).ids
+            res = self.browse(res).filtered(lambda x: x.product_tmpl_id.meli_id and not x.product_tmpl_id.meli_state).ids
         return res
     
 class ProductProduct(models.Model):
