@@ -20,6 +20,7 @@ class MeliCampaign(models.Model):
     state = fields.Selection([
         ('test','Pruebas'),
         ('active','Activa'),
+        ('inactive','Inactiva'),
         ], string=u'Estado', index=True, readonly=True)
     date_from = fields.Datetime(u'Desde')
     date_to = fields.Datetime(u'Hasta')
