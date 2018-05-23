@@ -19,6 +19,7 @@ class MeliCampaign(models.Model):
     description = fields.Text(string=u'Descripcion')
     state = fields.Selection([
         ('test','Pruebas'),
+        ('pending','Pendiente'),
         ('active','Activa'),
         ('inactive','Inactiva'),
         ], string=u'Estado', index=True, readonly=True)
