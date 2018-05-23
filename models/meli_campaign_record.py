@@ -25,6 +25,7 @@ class MeliCampaignRecord(models.Model):
         ('draft','Borrador'),
         ('pending_approval','Enviado a Meli/Esperando Aprobacion'),
         ('published','Publicado en MELI'),
+        ('approved','Aprobado en MELI'),
         ('done','Campaña Terminada'),
         ('rejected','Cancelado'),
         ], string=u'Estado', index=True, readonly=True, default = u'draft', )
@@ -124,6 +125,7 @@ class MeliCampaignRecordLine(models.Model):
         ('draft','Borrador'),
         ('pending_approval', 'Enviado a Meli/Esperando Aprobacion'),
         ('published','Publicado en MELI'),
+        ('approved','Aprobado en MELI'),
         ('done','Campaña Terminada'),
         ('rejected','Cancelado'),
         ], string=u'Estado', default = u'draft')
