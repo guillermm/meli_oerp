@@ -527,7 +527,7 @@ class ProductTemplate(models.Model):
             "price": int(product.price),
             "currency_id": product.meli_currency  or 'CLP',
             "condition": product.meli_condition  or '',
-            "available_quantity": max([qty_available, 1]),
+            "available_quantity": max([qty_available, 0]),
             "warranty": product.meli_warranty or '',
             #"pictures": [ { 'source': product.meli_imagen_logo} ] ,
             "video_id": product.meli_video  or '',
@@ -575,7 +575,7 @@ class ProductTemplate(models.Model):
                 variant_without_stock.append(product_variant.id)
             else:
                 variant_with_stock[product_variant.id] = qty_available
-            variation_data['available_quantity'] = max([qty_available, 1])
+            variation_data['available_quantity'] = max([qty_available, 0])
             variation_data['price'] = int(product_variant.price or product.price)
             variation_data['attribute_combinations'] = attribute_combinations
             variation_data['picture_ids'] = self._get_meli_image_variants(atribute_values)
@@ -726,7 +726,7 @@ class ProductTemplate(models.Model):
         if len(self.product_variant_ids) <= 1:
             body.update({
                 "price": int(product.price),
-                "available_quantity": max([qty_available, 1]),
+                "available_quantity": max([qty_available, 0]),
             })
         #ID de COLOR = 83000
         #ID de TALLA = 73003
@@ -762,7 +762,7 @@ class ProductTemplate(models.Model):
                 variant_without_stock.append(product_variant.id)
             else:
                 variant_with_stock[product_variant.id] = qty_available
-            variation_data['available_quantity'] = max([qty_available, 1])
+            variation_data['available_quantity'] = max([qty_available, 0])
             variation_data['price'] = int(product_variant.price or product.price)
             variation_data['attribute_combinations'] = attribute_combinations
             variation_data['picture_ids'] = self._get_meli_image_variants(atribute_values)
