@@ -66,6 +66,7 @@ class ProductTemplate(models.Model):
     meli_imagen_logo = fields.Char(string='Imagen Logo', size=256)
     meli_imagen_id = fields.Char(string='Imagen Id', size=256)
     meli_imagen_link = fields.Char(string='Imagen Link', size=256)
+    #TODO: eliminar campo no usado
     meli_multi_imagen_id = fields.Char(string='Multi Imagen Ids', size=512)
     meli_video = fields.Char( string='Video (id de youtube)', size=256)
     meli_state = fields.Boolean(compute='product_get_meli_update', string="Inicio de sesión requerida", store=False)
@@ -222,7 +223,6 @@ class ProductTemplate(models.Model):
 ##            'meli_imagen_logo': fields.char(string='Imagen Logo', size=256),
 ##            'meli_imagen_id': fields.char(string='Imagen Id', size=256),
             'meli_imagen_link': rjson['thumbnail'],
-##            'meli_multi_imagen_id': fields.char(string='Multi Imagen Ids', size=512),
             'meli_video': str(vid),
             'meli_dimensions': meli_dim_str,
             'list_price': rjson['price']
@@ -372,7 +372,6 @@ class ProductTemplate(models.Model):
                     image_ids+= [ { 'id': rjson['id'] }]
                     c = c + 1
                     print "image_ids:" + str(image_ids)
-        product.write( { "meli_multi_imagen_id": "%s" % (image_ids) } )
         return image_ids
 
     @api.onchange('meli_description_banner_id',)
