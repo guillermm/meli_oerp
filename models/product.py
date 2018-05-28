@@ -73,6 +73,7 @@ class ProductTemplate(models.Model):
     meli_permalink = fields.Char(compute='product_get_meli_update', size=256, string='PermaLink in MercadoLibre', store=False)
     meli_dimensions = fields.Char( string="Dimensiones del producto", size=128)
     meli_pub = fields.Boolean('Meli Publication',help='MELI Product')
+    need_update_to_meli = fields.Boolean(u'Necesita Actualizar datos en Meli?', copy=False)
     ### Agregar imagen/archivo uno o mas, y la descripcion en HTML...
     # TODO Agregar el banner
 
@@ -1024,6 +1025,7 @@ class ProductTemplate(models.Model):
         products = self.with_context(return_message_list=True).search([
             ('meli_pub','=',True),
             ('meli_id','!=',False),
+            ('need_update_to_meli', '=', True),
             ], limit=limit_meli)
         message_list = []
         message = []
@@ -1042,6 +1044,7 @@ class ProductTemplate(models.Model):
             for line in message_list:
                 csv_file.writerow([line[0], line[1]])
             fp.close()
+        products._unmark_to_update_meli()
         return True
     
     @api.model
@@ -1060,6 +1063,38 @@ class ProductTemplate(models.Model):
         res = super(ProductTemplate, self)._search(args=args, offset=offset, limit=limit, order=order, count=count, access_rights_uid=access_rights_uid)
         if self.env.context.get('filter_product_meli_campaign') and self.env.context.get('filter_product_action_type') == 'add' and not count:
             res = self.browse(res).filtered(lambda x: x.product_tmpl_id.meli_id and not x.product_tmpl_id.meli_state).ids
+        return res
+    
+    @api.multi
+    def _mark_to_update_meli(self):
+        if self:
+            SQL = "UPDATE product_template SET need_update_to_meli = true WHERE id IN %(product_ids)s"
+            params = {'product_ids': tuple(self.ids)}
+            self.env.cr.execute(SQL, params)
+        return True
+    
+    @api.multi
+    def _unmark_to_update_meli(self):
+        if self:
+            SQL = "UPDATE product_template SET need_update_to_meli = false WHERE id IN %(product_ids)s"
+            params = {'product_ids': tuple(self.ids)}
+            self.env.cr.execute(SQL, params)
+        return True
+    
+    @api.model
+    def create(self, vals):
+        #marcar como un producto que necesita actualizarse en meli
+        if vals.get('meli_pub') and 'need_update_to_meli' not in vals:
+            vals['need_update_to_meli'] = True
+        new_rec = super(ProductTemplate, self).create(vals)
+        return new_rec
+    
+    @api.multi
+    def write(self, vals):
+        res = super(ProductTemplate, self).write(vals)
+        products_meli = self.filtered('meli_pub')
+        if products_meli:
+            products_meli._mark_to_update_meli()
         return res
     
 class ProductProduct(models.Model):

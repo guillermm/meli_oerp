@@ -24,4 +24,4 @@ import questions
 import orders
 import sale_order
 import currency
-
+import stock_move
