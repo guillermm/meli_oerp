@@ -17,10 +17,15 @@
 				eval="(datetime.now() + relativedelta(hours=1, minute=0, second=0)).strftime('%Y-%m-%d %H:%M:%S')" />
 		</record>
 		
+		<!-- esta tarea cron no es necesaria ejecutarse automaticamente
+			ya que la tarea que baja los pedidos desde meli
+			al final enviara a actualizar los productos para tener un dato mas actualizado
+			sin embargo en ambiente de prueba se podria ejecutar esta tarea manualmente si se desea
+			por eso la inactivamos y no la eliminamos -->
 		<record id="ir_cron_update_product_to_meli" model="ir.cron"
 			forcecreate="True">
 			<field name="name">Actualizar Productos en MELI</field>
-			<field eval="True" name="active" />
+			<field name="active" eval="False" />
 			<field name="user_id" ref="base.user_root" />
 			<field name="interval_number">1</field>
 			<field name="interval_type">hours</field>

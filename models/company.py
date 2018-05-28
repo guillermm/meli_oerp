@@ -309,6 +309,11 @@ class ResCompany(models.Model):
                 for line in message_list:
                     csv_file.writerow([line[0], line[1]])
                 fp.close()
+        # despues de bajar pedidos y mover inventario, enviar a actualizar el stock a meli
+        # para tener el stock lo mas actualizado posbiel, y no dejar que otra tarea cron lo haga
+        # ya que las tareas cron se podrian chocar entre si y el stock quedaria mal
+        _logger.info("Enviando a actualizar productos a MELI")
+        self.env['product.template'].action_update_products_to_meli()
         return True
     
     @api.multi
