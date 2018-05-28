@@ -296,11 +296,21 @@ class ProductTemplate(models.Model):
             ML_status = rjson["error"]
         if "sub_status" in rjson:
             if len(rjson["sub_status"]) and rjson["sub_status"][0]=='deleted':
-                product.write({ 'meli_id': '' })
+                product.write({
+                    'meli_id': '',
+                    'meli_imagen_id': '',
+                    'meli_imagen_link': '',
+                })
                 product.product_variant_ids.write({ 'meli_id': '' })
+                product.product_image_ids.write({'meli_id': ''})
         if ML_status == 'closed' and product.meli_id:
-            product.write({ 'meli_id': '' })
+            product.write({
+                'meli_id': '',
+                'meli_imagen_id': '',
+                'meli_imagen_link': '',
+            })
             product.product_variant_ids.write({ 'meli_id': '' })
+            product.product_image_ids.write({'meli_id': ''})
         return {}
 
     def product_meli_upload_image( self ):
