@@ -313,7 +313,10 @@ class ResCompany(models.Model):
         # para tener el stock lo mas actualizado posbiel, y no dejar que otra tarea cron lo haga
         # ya que las tareas cron se podrian chocar entre si y el stock quedaria mal
         _logger.info("Enviando a actualizar productos a MELI")
-        self.env['product.template'].action_update_products_to_meli()
+        try:
+            self.env['product.template'].action_update_products_to_meli()
+        except Exception as e:
+            _logger.error(tools.ustr(e))
         return True
     
     @api.multi
