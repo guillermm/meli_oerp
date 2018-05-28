@@ -515,7 +515,7 @@ class mercadolibre_orders(models.Model):
                     notes.append(("ERROR Creando Cliente", msj))
                     need_review = True
                     _logger.error(msj)
-                    return meli_order, notes
+                    return meli_order, notes, send_mail
                 buyer = self._find_create_buyer(Buyer, document_number)
                 partner = self._find_create_partner(Buyer, document_number)
                 order_vals['buyer'] = buyer.id
@@ -557,9 +557,6 @@ class mercadolibre_orders(models.Model):
                     'need_review': need_review,
                     'note': "".join([msj[1] for msj in notes]),
                 })
-                template_mail = self.env.ref('meli_oerp.et_new_meli_order', False)
-                if send_mail and template_mail and not notes:
-                    template_mail.send_mail(meli_order.id, force_send=True)
             else:
                 meli_order.write({
                     'need_review': need_review,
@@ -568,7 +565,7 @@ class mercadolibre_orders(models.Model):
         except Exception, e:
             _logger.error(tools.ustr(e))
             notes.append(("Error descargando Pedido", tools.ustr(e)))
-        return meli_order, notes
+        return meli_order, notes, send_mail
 
     def orders_update_order( self, context=None ):
         meli_util_model = self.env['meli.util']
@@ -589,6 +586,7 @@ class mercadolibre_orders(models.Model):
 
     def orders_query_iterate(self, offset=0, filter_by="paid"):
         meli_util_model = self.env['meli.util']
+        meli_order_sent_by_mail = self.browse()
         meli_days_last_synchro = self.env['ir.config_parameter'].get_param('meli_days_synchro', 5)
         try:
             meli_days_last_synchro = int(meli_days_last_synchro)
@@ -634,10 +632,16 @@ class mercadolibre_orders(models.Model):
                         meli_order, msj = self._action_cancel_order(pdata)
                         message_list.extend(msj)
                     else:
-                        meli_order, msj = self.orders_update_order_json(pdata)
+                        meli_order, msj, send_mail = self.orders_update_order_json(pdata)
+                        if send_mail and meli_order:
+                            meli_order_sent_by_mail |= meli_order 
                         message_list.extend(msj)
         if (offset_next>0):
             message_list.extend(self.orders_query_iterate(offset_next, filter_by))
+        if meli_order_sent_by_mail:
+            template_mail = self.env.ref('meli_oerp.et_new_meli_order', False)
+            for meli_order in meli_order_sent_by_mail:
+                template_mail.send_mail(meli_order.id, force_send=True)
         return message_list
 
     def orders_query_recent(self):
