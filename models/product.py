@@ -1026,6 +1026,12 @@ class ProductTemplate(models.Model):
         message_list = []
         message = []
         for product in products:
+            try:
+                if product.meli_status != 'active':
+                    continue
+            except Exception as ex:
+                _logger.error(tools.ustr(ex))
+                continue
             message = product.product_update_to_meli()
             if isinstance(message, list):
                 message_list.extend(message)
