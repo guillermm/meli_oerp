@@ -333,7 +333,6 @@ class mercadolibre_orders(models.Model):
                 sale_order.write(sale_order_vals)
         else:
             _logger.info("Adding new sale.order: " )
-            _logger.info(sale_order_vals)            
             sale_order = SaleOrderModel.create(sale_order_vals)
             self.write({'sale_order_id': sale_order.id})
         for line in self.order_items:
@@ -576,7 +575,6 @@ class mercadolibre_orders(models.Model):
         meli = meli_util_model.get_new_instance()
         response = meli.get("/orders/"+order.order_id, {'access_token':meli.access_token})
         order_json = response.json()
-        _logger.info( order_json )
         if "error" in order_json:
             _logger.error( order_json["error"] )
             _logger.error( order_json["message"] )
@@ -612,7 +610,6 @@ class mercadolibre_orders(models.Model):
         response = meli.get(orders_query, params)
         orders_json = response.json()
         if "error" in orders_json:
-            _logger.error( orders_query )
             _logger.error( orders_json["error"] )
             if (orders_json["message"]=="invalid_token"):
                 _logger.error( orders_json["message"] )

@@ -61,7 +61,6 @@ class ResCompany(models.Model):
         try:
             _logger.info("access_token:"+str(ACCESS_TOKEN))
             response = meli.get("/users/"+company.mercadolibre_seller_id, {'access_token':meli.access_token} )
-            _logger.info("response.content:"+str(response.content))
             rjson = response.json()
             #response = meli.get("/users/")
             if "error" in rjson:
@@ -192,7 +191,6 @@ class ResCompany(models.Model):
         response = meli.get("/users/"+company.mercadolibre_seller_id+"/items/search", {'access_token':meli.access_token,'offset': 0 })
         #response = meli.get("/sites/MLA/search?seller_id="+company.mercadolibre_seller_id+"&limit=0", {'access_token':meli.access_token})
         rjson = response.json()
-        _logger.info(rjson)
         if 'error' in rjson:
             if rjson['message']=='invalid_token' or rjson['message']=='expired_token':
                 ACCESS_TOKEN = ''
@@ -226,7 +224,6 @@ class ResCompany(models.Model):
                     results += rjson2['results']
                     ioff+= rjson['paging']['limit']
                     condition_last_off = ( ioff>=rjson['paging']['total'])
-        _logger.info( rjson )
         _logger.info( "("+str(rjson['paging']['total'])+") products to check...")
         iitem = 0
         if (results):
@@ -253,7 +250,6 @@ class ResCompany(models.Model):
                         if (productcreated):
                             _logger.info( "product created: " + str(productcreated) + " >> meli_id:" + str(rjson3['id']) + "-" + str( rjson3['title'].encode("utf-8")) )
                             #pdb.set_trace()
-                            _logger.info(productcreated)
                             productcreated.product_meli_get_product()
                         else:
                             _logger.info( "product couldnt be created")

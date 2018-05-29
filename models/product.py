@@ -92,14 +92,12 @@ class ProductTemplate(models.Model):
         meli_util_model = self.env['meli.util']
         #pdb.set_trace()
         _logger.info("product_meli_get_product")
-        _logger.info(self)
         company = self.env.user.company_id
         meli = meli_util_model.get_new_instance()
         try:
             response = meli.get("/items/"+self.meli_id, {'access_token':meli.access_token})
             #_logger.info(response)
             rjson = response.json()
-            _logger.info(rjson)
         except IOError as e:
             print "I/O error({0}): {1}".format(e.errno, e.strerror)
             return {}
@@ -114,9 +112,6 @@ class ProductTemplate(models.Model):
         if 'status' in rjson and rjson['status'] == 'inactive':
             _logger.info("Producto Inactivo: %s %s, no se puede actualizar", rjson.get('id') or '', rjson.get('title') or '')
             return {}
-        if "content" in response:
-            _logger.info(response.content)
-        #    print "product_meli_get_product > response.content: " + response.content
         #TODO: traer la descripcion: con
         #https://api.mercadolibre.com/items/{ITEM_ID}/description?access_token=$ACCESS_TOKEN
         if rjson and rjson['descriptions']:
@@ -334,7 +329,6 @@ class ProductTemplate(models.Model):
         if ("error" in rjson):
             raise UserError('No se pudo cargar la imagen en MELI! Error: %s , Mensaje: %s, Status: %s' % ( rjson["error"], rjson["message"],rjson["status"],))
             return { 'status': 'error', 'message': 'not uploaded'}
-        _logger.info( rjson )
         if ("id" in rjson):
             #guardar id
             product.write( { "meli_imagen_id": rjson["id"], "meli_imagen_link": rjson["variations"][0]["url"] })
@@ -380,7 +374,6 @@ class ProductTemplate(models.Model):
         product = self
         banner = self.meli_description_banner_id
         #banner.description
-        _logger.info( banner.description )
         result = ""
         if (banner.description!="" and banner.description!=False and product.meli_imagen_link!=""):
             imgtag = "<img style='width: 420px; height: auto;' src='%s'/>" % ( product.meli_imagen_link )
@@ -634,14 +627,11 @@ class ProductTemplate(models.Model):
         if product.meli_id:
             response = meli.put("/items/"+product.meli_id, body, {'access_token':meli.access_token})
             resdescription = meli.put("/items/"+product.meli_id+"/description", bodydescription, {'access_token':meli.access_token})
-            rjsondes = resdescription.json()
-            _logger.info(rjsondes)
         else:
             response = meli.post("/items", body, {'access_token':meli.access_token})
         #check response
         # print response.content
         rjson = response.json()
-        _logger.info(rjson)
         #check error
         if "error" in rjson:
             #print "Error received: %s " % rjson["error"]
@@ -796,7 +786,6 @@ class ProductTemplate(models.Model):
         if product.meli_id:
             response = meli.put("/items/"+product.meli_id, body, {'access_token':meli.access_token})
             rjson = response.json()
-            _logger.info(rjson)
         #check error
         if "error" in rjson:
             #print "Error received: %s " % rjson["error"]
@@ -880,10 +869,8 @@ class ProductTemplate(models.Model):
             'title': self.get_title_for_category_predictor(),
             'price': self.get_price_for_category_predictor(),
         }]
-        _logger.info(vals)
         response = meli.post("/sites/MLC/category_predictor/predict", vals)
         rjson = response.json()
-        _logger.info(rjson)
         meli_categ = False
         if rjson and isinstance(rjson, list):
             if "id" in rjson[0]:
