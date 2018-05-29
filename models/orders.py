@@ -542,6 +542,7 @@ class mercadolibre_orders(models.Model):
                 for Item in order_json['order_items']:
                     product_find, variants_names = self._find_product(Item)
                     if not product_find:
+                        _logger.error("ERROR Buscando Producto: %s con ID: %s no exist", Item['item']['title'], Item['item']['id'])
                         notes.append(("ERROR Buscando producto", "*Producto: %s con ID: %s no existe" % (Item['item']['title'], Item['item']['id'])))
                         need_review = True
                         continue
@@ -582,7 +583,7 @@ class mercadolibre_orders(models.Model):
             self.orders_update_order_json( {"id": id, "order_json": order_json } )
         return {}
 
-    def orders_query_iterate(self, offset=0, filter_by="paid"):
+    def orders_query_iterate(self, total_downloaded=0, offset=0, filter_by="paid"):
         meli_util_model = self.env['meli.util']
         meli_order_sent_by_mail = self.browse()
         meli_days_last_synchro = self.env['ir.config_parameter'].get_param('meli_days_synchro', 5)
@@ -592,7 +593,6 @@ class mercadolibre_orders(models.Model):
             meli_days_last_synchro = 5
         #solo filtrar las ventas desde los ultimos N dias configurados(5 dias atras por defecto)
         filter_date_from = fields.Date.from_string(fields.Date.context_today(self)) - relativedelta(days=meli_days_last_synchro)
-        offset_next = 0
         company = self.env.user.company_id
         meli = meli_util_model.get_new_instance(company)
         message_list = []
@@ -600,7 +600,7 @@ class mercadolibre_orders(models.Model):
         params = {
             'access_token': meli.access_token,
             'seller': company.mercadolibre_seller_id,
-            'sort': 'date_desc',
+            'sort': 'date_asc',
             'order.date_created.from': '%sT00:00:00.000-00:00' % (filter_date_from.strftime(DF)),
         }
         if filter_by:
@@ -614,16 +614,26 @@ class mercadolibre_orders(models.Model):
             if (orders_json["message"]=="invalid_token"):
                 _logger.error( orders_json["message"] )
             return message_list
+        counter = 0
+        total = 0
+        if "results" in orders_json:
+            total_downloaded += len(orders_json["results"])
         if "paging" in orders_json:
             if "total" in orders_json["paging"]:
+                counter = offset + 1
+                total = orders_json["paging"]["total"]
                 if (orders_json["paging"]["total"]==0):
                     return message_list
-                else:
-                    if (orders_json["paging"]["total"]==orders_json["paging"]["limit"]):
-                        offset_next = offset + orders_json["paging"]["limit"]
+                else: 
+                    if total_downloaded < total:
+                        offset += orders_json["paging"]["limit"]
+                    else:
+                        offset = 0
         if "results" in orders_json:
             for order_json in orders_json["results"]:
                 if order_json:
+                    _logger.info("Procesando Pedido %s de %s", counter, total)
+                    counter += 1
                     pdata = {"id": False, "order_json": order_json}
                     if self._is_order_cancelled(order_json):
                         meli_order, msj = self._action_cancel_order(pdata)
@@ -633,8 +643,8 @@ class mercadolibre_orders(models.Model):
                         if send_mail and meli_order:
                             meli_order_sent_by_mail |= meli_order 
                         message_list.extend(msj)
-        if (offset_next>0):
-            message_list.extend(self.orders_query_iterate(offset_next, filter_by))
+        if (offset>0):
+            message_list.extend(self.orders_query_iterate(total_downloaded, offset, filter_by))
         if meli_order_sent_by_mail:
             template_mail = self.env.ref('meli_oerp.et_new_meli_order', False)
             for meli_order in meli_order_sent_by_mail:
@@ -642,7 +652,7 @@ class mercadolibre_orders(models.Model):
         return message_list
 
     def orders_query_recent(self):
-        res = self.orders_query_iterate(0)
+        res = self.orders_query_iterate()
         return res
     
     @api.model
