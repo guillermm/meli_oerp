@@ -305,6 +305,7 @@ class ResCompany(models.Model):
                 for line in message_list:
                     csv_file.writerow([line[0], line[1]])
                 fp.close()
+            self.env.cr.commit()
         # despues de bajar pedidos y mover inventario, enviar a actualizar el stock a meli
         # para tener el stock lo mas actualizado posbiel, y no dejar que otra tarea cron lo haga
         # ya que las tareas cron se podrian chocar entre si y el stock quedaria mal
