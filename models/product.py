@@ -1019,16 +1019,22 @@ class ProductTemplate(models.Model):
             ], limit=limit_meli)
         message_list = []
         message = []
+        count = 0
+        total = len(products)
         for product in products:
+            count += 1
+            _logger.info("Actualizando producto %s de %s", count, total)
             try:
                 if product.meli_status != 'active':
+                    _logger.error("Producto: %s ID MELI: %s no activo en meli, no se actualiza", product.id, product.meli_id)
                     continue
+                message = product.product_update_to_meli()
+                if isinstance(message, list):
+                    message_list.extend(message)
             except Exception as ex:
-                _logger.error(tools.ustr(ex))
+                message_list.append(tools.ustr(ex))
+                _logger.error("Error actualizando producto: %s ID MELI: %s, detalle del error: %s", product.id, product.meli_id, tools.ustr(ex))
                 continue
-            message = product.product_update_to_meli()
-            if isinstance(message, list):
-                message_list.extend(message)
         if message_list and csv:
             file_path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'logs'))
             if not os.path.exists(file_path):
