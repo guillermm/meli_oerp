@@ -689,7 +689,12 @@ class mercadolibre_orders(models.Model):
             ('need_credit_note', '=', False),
         ], limit=1)
         #puede que un pedido cancelado nunca se haya creado en el sistema
-        #no hacer nada o crearlo en estado cancelado, para estadisticas???
+        #crearlo para estadisticas
+        if not meli_order:
+            current_document_info = "Pedido de MELI: %s esta anulado pero no existe en ERP, se creara para estadisticas" % (order_json['id'])
+            _logger.info(current_document_info)
+            meli_order, msj, send_mail = self.orders_update_order_json(data)
+            message_list.extend(msj)
         if meli_order and meli_order.sale_order_id:
             sale_order = meli_order.sale_order_id
             need_credit_note = False
