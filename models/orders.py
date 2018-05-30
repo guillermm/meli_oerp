@@ -643,12 +643,12 @@ class mercadolibre_orders(models.Model):
                         if send_mail and meli_order:
                             meli_order_sent_by_mail |= meli_order 
                         message_list.extend(msj)
-        if (offset>0):
-            message_list.extend(self.orders_query_iterate(total_downloaded, offset, filter_by))
         if meli_order_sent_by_mail:
             template_mail = self.env.ref('meli_oerp.et_new_meli_order', False)
             for meli_order in meli_order_sent_by_mail:
                 template_mail.send_mail(meli_order.id, force_send=True)
+        if (offset>0):
+            message_list.extend(self.orders_query_iterate(total_downloaded, offset, filter_by))
         return message_list
 
     def orders_query_recent(self):
