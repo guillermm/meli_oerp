@@ -706,18 +706,13 @@ class ProductTemplate(models.Model):
         meli = meli_util_model.get_new_instance(company)
         #publicando multiples imagenes
         multi_images_ids = product.product_meli_upload_multi_images()
-        qty_available = self._get_meli_quantity_available()
         product.write({'meli_title': product.get_title_for_meli()})
         body = {
             "title": product.meli_title,
             "warranty": product.meli_warranty or '',
             "video_id": product.meli_video  or '',
         }
-        if len(self.product_variant_ids) <= 1:
-            body.update({
-                #"price": int(product.price),
-                "available_quantity": max([qty_available, 0]),
-            })
+        
         #ID de COLOR = 83000
         #ID de TALLA = 73003
         variations = []
@@ -759,6 +754,15 @@ class ProductTemplate(models.Model):
             if product_variant.meli_id:
                 variation_data['id'] = product_variant.meli_id
             variations.append(variation_data)
+        #cuando el producto en meli tiene variantes, no debe actualizar los datos en el producto
+        #deben actualizarse en cada variante por separado
+        #pero cuando no hay variantes, debe actualizarse en el producto principal
+        if not variations:
+            qty_available = self._get_meli_quantity_available()
+            body.update({
+                #"price": int(product.price),
+                "available_quantity": max([qty_available, 0]),
+            })
         body['variations'] = variations
         body = self.set_meli_fields_aditionals(body)
         #si la compañia tiene ID de tienda oficial, pasarla a los productos
