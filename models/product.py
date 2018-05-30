@@ -341,8 +341,6 @@ class ProductTemplate(models.Model):
         meli_util_model = self.env['meli.util']
         meli = meli_util_model.get_new_instance()
         product = self
-        if not product.product_image_ids:
-            return { 'status': 'error', 'message': 'no images to upload' }
         image_ids = []
         c = 0
         #loop over images
@@ -513,11 +511,7 @@ class ProductTemplate(models.Model):
                     return message_list
                 return warningobj.info( title='MELI WARNING', message=message_text, message_html=message_description)
         #publicando multiples imagenes
-        multi_images_ids = {}
-        if (product.product_image_ids):
-            # print 'website_multi_images presente:   ', product.images
-            #recorrer las imagenes y publicarlas
-            multi_images_ids = product.product_meli_upload_multi_images()
+        multi_images_ids = product.product_meli_upload_multi_images()
         qty_available = self._get_meli_quantity_available()
         body = {
             "title": product.meli_title or '',
@@ -711,11 +705,7 @@ class ProductTemplate(models.Model):
             }
         meli = meli_util_model.get_new_instance(company)
         #publicando multiples imagenes
-        multi_images_ids = {}
-        if (product.product_image_ids):
-            # print 'website_multi_images presente:   ', product.images
-            #recorrer las imagenes y publicarlas
-            multi_images_ids = product.product_meli_upload_multi_images()
+        multi_images_ids = product.product_meli_upload_multi_images()
         qty_available = self._get_meli_quantity_available()
         product.write({'meli_title': product.get_title_for_meli()})
         body = {
