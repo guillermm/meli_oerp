@@ -312,12 +312,12 @@ class ProductTemplate(models.Model):
         meli_util_model = self.env['meli.util']
         warningobj = self.env['warning']
         meli = meli_util_model.get_new_instance()
+        return_message_list = self.env.context.get('return_message_list')
+        message_list = []
         product = self
         product_image = product.get_product_image()
         if not product_image:
-            return warningobj.info( title='MELI WARNING', message="Debe cargar una imagen de base en el producto.", message_html="" )
-        # print "product_meli_upload_image"
-        #print "product_meli_upload_image: " + response.content
+            return warningobj.info( title='MELI WARNING', message="Debe cargar una imagen de base en el producto.", message_html="" ), message_list
         imagebin = base64.b64decode(product_image)
 #       print "data:image/png;base64,"+imageb64
 #       files = [ ('images', ('image_medium', imagebin, "image/png")) ]
@@ -327,19 +327,27 @@ class ProductTemplate(models.Model):
         # print response.content
         rjson = response.json()
         if ("error" in rjson):
-            raise UserError('No se pudo cargar la imagen en MELI! Error: %s , Mensaje: %s, Status: %s' % ( rjson["error"], rjson["message"],rjson["status"],))
-            return { 'status': 'error', 'message': 'not uploaded'}
+            message_text = 'No se pudo cargar la imagen en MELI, Producto: %s Error: %s , Mensaje: %s, Status: %s' % \
+                (product.display_name, rjson["error"], rjson["message"],rjson["status"]) 
+            message_description = ""
+            message_list.append((message_text, message_description))
+            if return_message_list:
+                return {}, message_list
+            else:
+                raise UserError(message_text)
         if ("id" in rjson):
             #guardar id
             product.write( { "meli_imagen_id": rjson["id"], "meli_imagen_link": rjson["variations"][0]["url"] })
             #asociar imagen a producto
             if product.meli_id:
                 response = meli.post("/items/"+product.meli_id+"/pictures", { 'id': rjson["id"] }, { 'access_token': meli.access_token } )
-        return { 'status': 'success', 'message': 'uploaded and assigned' }
+        return {'status': 'success', 'message': 'uploaded and assigned'}, message_list
 
     def product_meli_upload_multi_images( self  ):
         meli_util_model = self.env['meli.util']
         meli = meli_util_model.get_new_instance()
+        return_message_list = self.env.context.get('return_message_list')
+        message_list = []
         product = self
         image_ids = []
         c = 0
@@ -347,24 +355,28 @@ class ProductTemplate(models.Model):
         for product_image in product.product_image_ids:
             if (product_image.image):
                 if product_image.meli_id:
-                    image_ids+= [{'id': product_image.meli_id}]
+                    image_ids += [{'id': product_image.meli_id}]
                     _logger.info("Imagen ya tenia ID de MELI, se usara ese ID: %s", product_image.meli_id)
                     continue
                 imagebin = base64.b64decode( product_image.image )
                 #files = { 'file': ('image.png', imagebin, "image/png"), }
                 files = { 'file': ('image.jpg', imagebin, "image/jpeg"), }
                 response = meli.upload("/pictures", files, { 'access_token': meli.access_token } )
-                print "meli upload:" + response.content
                 rjson = response.json()
                 if ("error" in rjson):
-                    raise UserError(_('No se pudo cargar la imagen en MELI! Error: %s , Mensaje: %s, Status: %s') % ( rjson["error"], rjson["message"],rjson["status"],))
-                    #return { 'status': 'error', 'message': 'not uploaded'}
+                    message_text = 'No se pudo cargar la imagen ID: %s en MELI, Producto: %s Error: %s , Mensaje: %s, Status: %s' % \
+                        (product_image.id, product.display_name, rjson["error"], rjson["message"],rjson["status"]) 
+                    message_description = ""
+                    message_list.append((message_text, message_description))
+                    if return_message_list:
+                        return image_ids, message_list
+                    else:
+                        raise UserError(message_text)
                 else:
                     product_image.write({'meli_id': rjson['id']})
-                    image_ids+= [ { 'id': rjson['id'] }]
+                    image_ids += [{ 'id': rjson['id']}]
                     c = c + 1
-                    print "image_ids:" + str(image_ids)
-        return image_ids
+        return image_ids, message_list
 
     @api.onchange('meli_description_banner_id',)
     def product_on_change_meli_banner(self):
@@ -492,7 +504,9 @@ class ProductTemplate(models.Model):
             return warningobj.info( title='MELI WARNING', message=message_text, message_html=message_description)
         elif not product.meli_imagen_id:
             # print "try uploading image..."
-            resim = product.product_meli_upload_image()
+            resim, message_list_tmp = product.product_meli_upload_image()
+            if message_list_tmp:
+                message_list.extend(message_list_tmp)
             if "status" in resim:
                 if (resim["status"]=="error" or resim["status"]=="warning"):
                     error_msg = 'MELI: mensaje de error:   ', resim
