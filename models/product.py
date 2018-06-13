@@ -762,7 +762,7 @@ class ProductTemplate(models.Model):
             else:
                 variant_with_stock[product_variant.id] = qty_available
             variation_data['available_quantity'] = max([qty_available, 0])
-            #variation_data['price'] = int(product_variant.price or product.price)
+            variation_data['price'] = int(product_variant.price or product.price)
             variation_data['attribute_combinations'] = attribute_combinations
             variation_data['picture_ids'] = self._get_meli_image_variants(atribute_values)
             if product_variant.meli_id:
@@ -774,7 +774,7 @@ class ProductTemplate(models.Model):
         if not variations:
             qty_available = self._get_meli_quantity_available()
             body.update({
-                #"price": int(product.price),
+                "price": int(product.price),
                 "available_quantity": max([qty_available, 0]),
             })
         body['variations'] = variations
