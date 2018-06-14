@@ -525,7 +525,9 @@ class ProductTemplate(models.Model):
                     return message_list
                 return warningobj.info( title='MELI WARNING', message=message_text, message_html=message_description)
         #publicando multiples imagenes
-        multi_images_ids = product.product_meli_upload_multi_images()
+        multi_images_ids, message_list_images = product.product_meli_upload_multi_images()
+        if message_list_images:
+            message_list.extend(message_list_images)
         qty_available = self._get_meli_quantity_available()
         body = {
             "title": product.meli_title or '',
@@ -719,7 +721,9 @@ class ProductTemplate(models.Model):
             }
         meli = meli_util_model.get_new_instance(company)
         #publicando multiples imagenes
-        multi_images_ids = product.product_meli_upload_multi_images()
+        multi_images_ids, message_list_images = product.product_meli_upload_multi_images()
+        if message_list_images:
+            message_list.extend(message_list_images)
         product.write({'meli_title': product.get_title_for_meli()})
         body = {
             "title": product.meli_title,
