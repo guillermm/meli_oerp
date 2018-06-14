@@ -205,6 +205,7 @@ class MeliCampaignRecordLine(models.Model):
         for line in self:
             post_data = {
                 'deal_price': line.meli_price,
+                'regular_price': line.price_unit,
                 'declared_free_shipping': line.declared_free_shipping,
                 'declared_oro_premium_full': line.declared_oro_premium_full,
             }
