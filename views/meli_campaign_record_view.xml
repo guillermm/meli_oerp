@@ -29,11 +29,18 @@
 							type="object" confirm="Esta seguro de Publicar la Oferta en MELI?"
 							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', 'not in', ('draft',))]}"
 							class="oe_highlight" />
-						<button name="action_update_prices_to_meli" string="Actualizar Oferta en MELI"
+						<button name="action_done_publish" string="Finalizar Oferta"
 							type="object"
+							confirm="Esta seguro de Finalizar la Oferta?. Ya no podra Ofertar mas productos y debera crear otra campaña"
+							states="approved,published" class="oe_highlight" />
+						<button name="action_update_prices_to_meli" string="Actualizar Oferta en MELI"
+							type="object" icon="fa-upload"
 							confirm="Esta Seguro de Actualizar la Oferta en MELI?, esto enviara todos los productos con el precio actual"
-							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', 'not in', ('pending_approval','published'))]}"
-							class="oe_highlight" />
+							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', 'not in', ('pending_approval','published', 'approved'))]}" />
+						<button name="action_download_campaign" string="Actualizar Oferta desde Meli"
+							type="object" icon="fa-download"
+							confirm="Esta Seguro de actualizar oferta desde MELI?, esto sobreescribira los datos existentes"
+							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', 'in', ('rejected', 'done'))]}" />
 						<button name="action_set_products" string="Agregar Productos"
 							type="object" context="{'action_type': 'add'}"
 							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', 'not in', ('draft', 'pending_approval',))]}" />
@@ -44,19 +51,16 @@
 							type="object"
 							confirm="Esta Seguro de recalcular los Precios?, esto se hara en base a la lista de precios seleccionada"
 							attrs="{'invisible': ['|', ('line_ids', '=', []), ('state', 'not in', ('draft', 'pending_approval',))]}" />
-						<button name="action_done_publish" string="Finalizar Publicacion"
-							type="object"
-							confirm="Esta seguro de Finalizar la Publicacion?. Ya no podra Ofertar mas productos y debera crear otra campaña"
-							states="published" class="oe_highlight" />
-						<button name="action_cancel_publish" string="Cancelar Publicacion"
-							type="object" confirm="Esta seguro de Cancelar la Publicacion?."
+						<button name="action_cancel_publish" string="Cancelar Oferta"
+							type="object" confirm="Esta seguro de Cancelar la Oferta?."
 							states="pending_approval,published" />
 						<field name="state" widget="statusbar" statusbar_visible="draft,published,done" />
 					</header>
 					<sheet>
 						<group>
 							<group>
-								<field name="campaign_id" options="{'no_create': True}" />
+								<field name="campaign_id" domain="[('state', '!=', 'inactive')]"
+									options="{'no_create': True}" />
 								<field name="name" />
 							</group>
 							<group>
@@ -177,7 +181,8 @@
 		</record>
 
 		<menuitem id="meli_campaign_record_menu" name="Publicacion de Ofertas"
-			sequence="17" parent="menu_meli" action="meli_campaign_record_action" groups="meli_oerp.group_meli_user" />
+			sequence="17" parent="menu_meli" action="meli_campaign_record_action"
+			groups="meli_oerp.group_meli_user" />
 
 	</data>
 </odoo>

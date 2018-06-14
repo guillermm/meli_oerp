@@ -6,7 +6,11 @@
 			<field name="name">meli.campaign.tree</field>
 			<field name="model">meli.campaign</field>
 			<field name="arch" type="xml">
-				<tree create="0" edit="0" delete="0">
+				<tree create="0" edit="0" delete="0" 
+					decoration-info="state == 'active'"
+					decoration-primary="state == 'pending'"
+					decoration-muted="state == 'inactive'"
+					decoration-warning="state == 'test'">
 					<field name="meli_id" />
 					<field name="name" />
 					<field name="date_from" />
@@ -92,6 +96,8 @@
 					<field name="date_to" />
 					<field name="state" />
 					<group name="filters" string="Filtros">
+						<filter name="filter_active" string="Campañas Activas"
+							domain="[('state','=','active')]" />
 						<filter name="filter_inactive" string="Inactivos"
 							domain="[('active','=',False)]" />
 					</group>
@@ -111,6 +117,7 @@
 			<field name="view_mode">tree,form</field>
 			<field name="view_id" ref="meli_campaign_tree_view" />
 			<field name="search_view_id" ref="meli_campaign_search_view" />
+			<field name="context">{'search_default_filter_active': 1}</field>
 		</record>
 
 		<menuitem id="meli_campaign_menu" name="Campañas" sequence="15"
