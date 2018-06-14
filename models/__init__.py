@@ -15,6 +15,7 @@ import meli_campaign_record
 import product_attribute
 import product_image
 import stock_warehouse
+import pricelist
 import product
 import category
 import banner
