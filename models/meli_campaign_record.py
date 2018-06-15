@@ -142,7 +142,7 @@ class MeliCampaignRecord(models.Model):
                                 (product_template.name, item_id, campaign_line.meli_campaign_id.name, campaign_line.meli_campaign_id.id))
                 campaign_line.write(vals)
             else:
-                messages.append("El producto: %s ID: %s No existe en la campaña: %s, se creara" % 
+                messages.append("El producto: %s ID: %s No existe en la campaña: %s ID: %s, se creara" % 
                                 (product_template.name, item_id, self.name, self.id))
                 vals.update({
                     'meli_campaign_id': self.id,
