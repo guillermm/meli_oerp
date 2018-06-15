@@ -297,7 +297,7 @@ class ProductTemplate(models.Model):
             })
             product.product_variant_ids.write({ 'meli_id': '' })
             product.product_image_ids.write({'meli_id': ''})
-        return {}
+            return {}
         if product.meli_status!='closed':
             self.product_meli_status_close()
         response = meli.put("/items/"+product.meli_id, { 'deleted': 'true' }, {'access_token':meli.access_token})
