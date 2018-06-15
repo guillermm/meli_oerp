@@ -257,27 +257,32 @@ class ProductTemplate(models.Model):
         }
 
     def product_meli_status_close(self):
+        if not self.meli_id:
+            return {}
         meli_util_model = self.env['meli.util']
         meli = meli_util_model.get_new_instance()
         response = meli.put("/items/"+self.meli_id, { 'status': 'closed' }, {'access_token':meli.access_token})
-        #print "product_meli_status_close: " + response.content
         return {}
 
-    def product_meli_status_pause( self ):
+    def product_meli_status_pause(self):
+        if not self.meli_id:
+            return {}
         meli_util_model = self.env['meli.util']
         meli = meli_util_model.get_new_instance()
         response = meli.put("/items/"+self.meli_id, { 'status': 'paused' }, {'access_token':meli.access_token})
-        #print "product_meli_status_pause: " + response.content
         return {}
 
-    def product_meli_status_active( self ):
+    def product_meli_status_active(self):
+        if not self.meli_id:
+            return {}
         meli_util_model = self.env['meli.util']
         meli = meli_util_model.get_new_instance()
         response = meli.put("/items/"+self.meli_id, { 'status': 'active' }, {'access_token':meli.access_token})
-        #print "product_meli_status_active: " + response.content
         return {}
 
-    def product_meli_delete( self ):
+    def product_meli_delete(self):
+        if not self.meli_id:
+            return {}
         meli_util_model = self.env['meli.util']
         meli = meli_util_model.get_new_instance()
         product = self
