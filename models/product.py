@@ -286,6 +286,18 @@ class ProductTemplate(models.Model):
         meli_util_model = self.env['meli.util']
         meli = meli_util_model.get_new_instance()
         product = self
+        # hay un estado inactive que no permite hacer nada en meli, 
+        # asi que borrar todos los datos para que se pueda subir el producto con otro ID
+        # TODO: no se como o xq se ponen los productos en inactive en meli??
+        if product.meli_status == 'inactive':
+            product.write({
+                'meli_id': '',
+                'meli_imagen_id': '',
+                'meli_imagen_link': '',
+            })
+            product.product_variant_ids.write({ 'meli_id': '' })
+            product.product_image_ids.write({'meli_id': ''})
+        return {}
         if product.meli_status!='closed':
             self.product_meli_status_close()
         response = meli.put("/items/"+product.meli_id, { 'deleted': 'true' }, {'access_token':meli.access_token})
