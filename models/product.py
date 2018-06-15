@@ -698,9 +698,14 @@ class ProductTemplate(models.Model):
             return message_list
         return {}
     
-    def product_update_to_meli(self):
+    def product_update_to_meli(self, campaign_data=None):
         meli_util_model = self.env['meli.util']
         message_list = []
+        if campaign_data is None:
+            campaign_data = self._get_deals_for_product()
+        # cuando el producto este en campañas, se debe actualizar el precio desde la campaña
+        # caso contrario, se puede actualizar el precio directamente desde aca
+        deals = campaign_data.get(self)
         return_message_list = self.env.context.get('return_message_list')
         message_text, message_description = "", ""
         pricelist = self._get_pricelist_for_meli()
@@ -766,7 +771,8 @@ class ProductTemplate(models.Model):
             else:
                 variant_with_stock[product_variant.id] = qty_available
             variation_data['available_quantity'] = max([qty_available, 0])
-            #variation_data['price'] = int(product_variant.price or product.price)
+            if not deals:
+                variation_data['price'] = int(product_variant.price or product.price)
             variation_data['attribute_combinations'] = attribute_combinations
             variation_data['picture_ids'] = self._get_meli_image_variants(atribute_values)
             if product_variant.meli_id:
@@ -778,9 +784,12 @@ class ProductTemplate(models.Model):
         if not variations:
             qty_available = self._get_meli_quantity_available()
             body.update({
-                #"price": int(product.price),
                 "available_quantity": max([qty_available, 0]),
             })
+            if not deals:
+                body.update({
+                    "price": int(product.price),
+                })
         body['variations'] = variations
         body = self.set_meli_fields_aditionals(body)
         #si la compañia tiene ID de tienda oficial, pasarla a los productos
@@ -845,6 +854,23 @@ class ProductTemplate(models.Model):
                             })
                 if body_stock:
                     response = meli.put("/items/"+product.meli_id, body_stock, {'access_token':meli.access_token})
+        if deals:
+            # modificar precio de las campañas activas, 
+            # en caso de no haber campaña activa 
+            # mostrar mensaje que no se puede actualizar precio xq producto esta en campañas inactivas
+            current_deals = deals.filtered(lambda x: x.state not in ('draft', 'done', 'rejected'))
+            if current_deals:
+                message_list_deals = current_deals.action_update_to_meli()
+                if message_list_deals and not return_message_list:
+                    return warningobj.info( title='MELI WARNING', message=u"ERROR actualizando precio desde campaña", message_html="<br/>".join(message_list_deals))
+            else:
+                message_text = "No se puede actualizar precio de producto: %s" % product.display_name
+                message_description = "El Producto esta en campañas: %s, por favor verifique!!!" % "\n".join(deals.mapped('meli_campaign_id').mapped('name'))
+                if return_message_list:
+                    message_list.append((message_text, message_description))
+                else:
+                    return warningobj.info( title='MELI WARNING', message=message_text, message_html=message_description)
+                
         if return_message_list:
             return message_list
         return {}
@@ -1027,6 +1053,24 @@ class ProductTemplate(models.Model):
             fp.close()
         return True
     
+    @api.multi
+    def _get_deals_for_product(self):
+        # buscar las ofertas en las que el producto ha participado
+        # cuando el producto esta en una oferta activa, 
+        # meli no permite modificar el precio en el producto
+        # se debe actualizar el precio desde la oferta
+        domain = [
+            ('product_template_id', 'in', self.ids),
+            ('state', '!=', 'draft'),
+        ]
+        campaign_data = {}
+        campaign_lines = self.env['meli.campaign.record.line'].search(domain)
+        for line in campaign_lines:
+            if line.product_template_id not in campaign_data:
+                campaign_data[line.product_template_id] = self.env['meli.campaign.record.line'].browse()
+            campaign_data[line.product_template_id] |= line
+        return campaign_data
+    
     @api.model
     def action_update_products_to_meli(self):
         limit_meli = int(self.env['ir.config_parameter'].get_param('meli.product.limit', '1000').strip())
@@ -1039,6 +1083,9 @@ class ProductTemplate(models.Model):
         message = []
         count = 0
         total = len(products)
+        campaign_data = {}
+        if products:
+            campaign_data = products._get_deals_for_product()
         for product in products:
             count += 1
             _logger.info("Actualizando producto %s de %s", count, total)
@@ -1046,7 +1093,7 @@ class ProductTemplate(models.Model):
                 if product.meli_status != 'active':
                     _logger.error("Producto: %s ID MELI: %s no activo en meli, no se actualiza", product.id, product.meli_id)
                     continue
-                message = product.product_update_to_meli()
+                message = product.product_update_to_meli(campaign_data)
                 if isinstance(message, list):
                     message_list.extend(message)
             except Exception as ex:
