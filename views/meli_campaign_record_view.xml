@@ -93,19 +93,19 @@
 										<field name="state" readonly="1" force_save="1" />
 										<button name="action_update_to_meli" string="Actualizar Oferta"
 											type="object" confirm="Esta seguro de Actualizar la Oferta en MELI?"
-											states="pending_approval,published" class="oe_highlight" />
+											states="pending_approval,published,approved" class="oe_highlight" />
 										<button name="action_unpublish_to_meli" string="Eliminar Item de Oferta"
 											type="object" confirm="Esta seguro de Eliminar este Item la Oferta en MELI?"
-											states="pending_approval,published,done" />
+											states="pending_approval,published" />
 									</tree>
 									<form>
 										<header>
 											<button name="action_update_to_meli" string="Actualizar Oferta"
 												type="object" confirm="Esta seguro de Actualizar la Oferta en MELI?"
-												states="pending_approval,published" class="oe_highlight" />
+												states="pending_approval,published,approved" class="oe_highlight" />
 											<button name="action_unpublish_to_meli" string="Eliminar Item de Oferta"
 												type="object" confirm="Esta seguro de Eliminar este Item la Oferta en MELI?"
-												states="pending_approval,published,done" />
+												states="pending_approval,published" />
 											<field name="state" widget="statusbar"
 												statusbar_visible="draft,published,done" />
 										</header>
