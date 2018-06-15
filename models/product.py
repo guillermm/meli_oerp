@@ -622,10 +622,10 @@ class ProductTemplate(models.Model):
         #if product.meli_imagen_logo:
         if product.meli_imagen_id:
             body.setdefault('pictures', []).append({'id': product.meli_imagen_id})
-            if (multi_images_ids):
-                body.setdefault('pictures', []).extend(multi_images_ids)
-            if product.meli_imagen_logo:
-                body.setdefault('pictures', []).append({'source': product.meli_imagen_logo})
+        if (multi_images_ids):
+            body.setdefault('pictures', []).extend(multi_images_ids)
+        if product.meli_imagen_logo:
+            body.setdefault('pictures', []).append({'source': product.meli_imagen_logo})
         #else:
         #    return warningobj.info(title='MELI WARNING', message="Debe completar el campo 'Imagen_Logo' con un url", message_html="")
 
@@ -730,6 +730,27 @@ class ProductTemplate(models.Model):
                 "target": "new",
             }
         meli = meli_util_model.get_new_instance(company)
+        #publicando imagen cargada en OpenERP
+        product_image = product.get_product_image()
+        if not product_image:
+            message_text = "Debe cargar una imagen de base en el producto: %s." % product.display_name
+            message_description = ""
+            message_list.append((message_text, message_description))
+            if return_message_list:
+                return message_list
+            return warningobj.info( title='MELI WARNING', message=message_text, message_html=message_description)
+        elif not product.meli_imagen_id:
+            # print "try uploading image..."
+            resim, message_list_tmp = product.product_meli_upload_image()
+            if message_list_tmp:
+                message_list.extend(message_list_tmp)
+            if "status" in resim:
+                if (resim["status"]=="error" or resim["status"]=="warning"):
+                    error_msg = 'MELI: mensaje de error:   ', resim
+                    message_text = error_msg
+                    message_description = ""
+                    message_list.append((message_text, message_description))
+                    _logger.error(error_msg)
         #publicando multiples imagenes
         multi_images_ids, message_list_images = product.product_meli_upload_multi_images()
         if message_list_images:
@@ -801,13 +822,12 @@ class ProductTemplate(models.Model):
         if company.mercadolibre_official_store_id:
             body['official_store_id'] = company.mercadolibre_official_store_id
         #asignando imagen de logo (por source)
-        #if product.meli_imagen_logo:
         if product.meli_imagen_id:
             body.setdefault('pictures', []).append({'id': product.meli_imagen_id})
-            if (multi_images_ids):
-                body.setdefault('pictures', []).extend(multi_images_ids)
-            if product.meli_imagen_logo:
-                body.setdefault('pictures', []).append({'source': product.meli_imagen_logo})
+        if (multi_images_ids):
+            body.setdefault('pictures', []).extend(multi_images_ids)
+        if product.meli_imagen_logo:
+            body.setdefault('pictures', []).append({'source': product.meli_imagen_logo})
         rjson = {}
         if product.meli_id:
             response = meli.put("/items/"+product.meli_id, body, {'access_token':meli.access_token})
