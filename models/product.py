@@ -1126,7 +1126,7 @@ class ProductTemplate(models.Model):
         # se debe actualizar el precio desde la oferta
         domain = [
             ('product_template_id', 'in', self.ids),
-            ('state', '!=', 'draft'),
+            ('state', 'not in', ('draft', 'done', 'rejected')),
         ]
         campaign_data = {}
         campaign_lines = self.env['meli.campaign.record.line'].search(domain)
