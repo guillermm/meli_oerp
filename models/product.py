@@ -353,8 +353,21 @@ class ProductTemplate(models.Model):
             else:
                 raise UserError(message_text)
         if ("id" in rjson):
-            #guardar id
-            product.write( { "meli_imagen_id": rjson["id"], "meli_imagen_link": rjson["variations"][0]["url"] })
+            #guardar id de imagen, pero solo actualizarla cuando sea la primera vez, o el ID haya cambiado
+            #para no actualizar siempre el mismo ID y hacer un write imnecesario
+            vals_write = {}
+            if product.meli_imagen_id:
+                if product.meli_imagen_id != rjson["id"]:
+                    vals_write['meli_imagen_id'] = rjson["id"]
+            else:
+                vals_write['meli_imagen_id'] = rjson["id"]
+            if product.meli_imagen_link:
+                if product.meli_imagen_link != rjson["variations"][0]["url"]:
+                    vals_write['meli_imagen_link'] = rjson["variations"][0]["url"]
+            else:
+                vals_write['meli_imagen_link'] = rjson["variations"][0]["url"]
+            if vals_write:
+                product.write(vals_write)
             #asociar imagen a producto
             if product.meli_id:
                 response = meli.post("/items/"+product.meli_id+"/pictures", { 'id': rjson["id"] }, { 'access_token': meli.access_token } )
@@ -390,7 +403,11 @@ class ProductTemplate(models.Model):
                     else:
                         raise UserError(message_text)
                 else:
-                    product_image.write({'meli_id': rjson['id']})
+                    if product_image.meli_id:
+                        if product_image.meli_id != rjson['id']:
+                            product_image.write({'meli_id': rjson['id']})
+                    else:
+                        product_image.write({'meli_id': rjson['id']})
                     image_ids += [{ 'id': rjson['id']}]
                     c = c + 1
         return image_ids, message_list
@@ -430,8 +447,6 @@ class ProductTemplate(models.Model):
             meli = meli_util_model.get_new_instance(company)
             if product.meli_id:
                 response = meli.get("/items/"+product.meli_id, {'access_token':meli.access_token} )
-                rjson = response.json()
-                
                 rjson = response.json()
                 if "status" in rjson:
                     ML_status = rjson["status"]
@@ -687,7 +702,11 @@ class ProductTemplate(models.Model):
                 return warningobj.info( title='MELI WARNING', message=message_text, message_html=message_description)
         #last modifications if response is OK
         if "id" in rjson:
-            product.write( { 'meli_id': rjson["id"]} )
+            if product.meli_id:
+                if product.meli_id != rjson["id"]:
+                    product.write({'meli_id': rjson["id"]})
+            else:
+                product.write({'meli_id': rjson["id"]})
             #pasar el id de cada variante
             if rjson.get('variations', []):
                 self._set_meli_id_from_variants(rjson.get('variations', []))
@@ -767,7 +786,12 @@ class ProductTemplate(models.Model):
         multi_images_ids, message_list_images = product.product_meli_upload_multi_images()
         if message_list_images:
             message_list.extend(message_list_images)
-        product.write({'meli_title': product.get_title_for_meli()})
+        meli_title = product.get_title_for_meli()
+        if product.meli_title:
+            if product.meli_title != meli_title:
+                product.write({'meli_title': meli_title})
+        else:
+            product.write({'meli_title': meli_title})
         body = {
             "title": product.meli_title,
             "warranty": product.meli_warranty or '',
@@ -1060,7 +1084,11 @@ class ProductTemplate(models.Model):
                     all_atr.update(set(attribute.attribute_id.meli_id.split(',')))
                     all_atr_name.add(attribute.name.lower())
                 if all_atr_meli.intersection(all_atr) and all_atr_name_meli == all_atr_name:
-                    product_variant.write({'meli_id': variant['id']})
+                    if product_variant.meli_id:
+                        if product_variant.meli_id != variant['id']:
+                            product_variant.write({'meli_id': variant['id']})
+                    else:
+                        product_variant.write({'meli_id': variant['id']})
                     break
 
     @api.model
