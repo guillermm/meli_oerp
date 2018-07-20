@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+	<data>
+
+		<record id="meli_campaign_record_line_tree_view" model="ir.ui.view">
+			<field name="name">meli.campaign.record.line.tree</field>
+			<field name="model">meli.campaign.record.line</field>
+			<field name="arch" type="xml">
+				<tree create="0" delete="0" edit="0" decoration-muted="state=='rejected'"
+					decoration-primary="state=='pending_approval'" decoration-info="state in ('published', 'done')">
+					<field name="meli_campaign_id" />
+					<field name="product_template_id" />
+					<field name="price_unit" />
+					<field name="list_price" />
+					<field name="meli_price" />
+					<field name="declared_stock" />
+					<field name="declared_free_shipping" />
+					<field name="declared_oro_premium_full" />
+					<field name="state" />
+				</tree>
+			</field>
+		</record>
+
+		<record id="meli_campaign_record_line_form_view" model="ir.ui.view">
+			<field name="name">meli.campaign.record.line.form</field>
+			<field name="model">meli.campaign.record.line</field>
+			<field name="arch" type="xml">
+				<form create="0" delete="0" edit="0">
+					<header>
+						<field name="state" widget="statusbar" statusbar_visible="draft,published,done" />
+					</header>
+					<sheet>
+						<group>
+							<group>
+								<field name="meli_campaign_id" />
+								<field name="product_template_id" />
+								<field name="price_unit" />
+								<field name="list_price" />
+								<field name="meli_price" />
+							</group>
+							<group>
+								<field name="declared_stock" />
+								<field name="declared_oro_premium_full" />
+								<field name="declared_free_shipping" />
+							</group>
+						</group>
+						<notebook colspan="2">
+							<page string="Razones de Revision"
+								attrs="{'invisible': [('review_reasons_ids', '=', [])]}">
+								<field name="review_reasons_ids">
+									<tree>
+										<field name="reason_type" />
+										<field name="reason_requisite" />
+										<field name="message_key" />
+									</tree>
+									<form>
+										<group>
+											<field name="reason_type" />
+											<field name="reason_requisite" />
+											<field name="message_key" />
+										</group>
+									</form>
+								</field>
+							</page>
+						</notebook>
+					</sheet>
+				</form>
+			</field>
+		</record>
+
+		<record id="meli_campaign_record_line_search_view" model="ir.ui.view">
+			<field name="name">meli.campaign.record.line.search</field>
+			<field name="model">meli.campaign.record.line</field>
+			<field name="arch" type="xml">
+				<search>
+					<field name="meli_campaign_id" />
+					<field name="product_template_id" />
+					<field name="state" />
+					<group name="filters" string="Filtros">
+						<filter name="filter_by_pending" string="Esperando aprobacion"
+							domain="[('state','=', 'pending_approval')]" />
+						<filter name="filter_by_in_progress" string="En Progreso"
+							domain="[('state','not in', ('draft', 'pending_approval', 'done', 'rejected'))]" />
+						<filter name="filter_by_done" string="Campaña Terminada"
+							domain="[('state','=', 'done')]" />
+					</group>
+					<group name="group_by" string="Agrupar por">
+						<filter name="group_by_campaign" string="Campaña"
+							context="{'group_by': 'meli_campaign_id'}" />
+						<filter name="group_by_campaign" string="Plantilla de Producto"
+							context="{'group_by': 'product_template_id'}" />
+						<filter name="group_by_state" string="Estado"
+							context="{'group_by': 'state'}" />
+					</group>
+				</search>
+			</field>
+		</record>
+
+		<record id="meli_campaign_record_line_action" model="ir.actions.act_window">
+			<field name="name">Detalle de Ofertas</field>
+			<field name="type">ir.actions.act_window</field>
+			<field name="res_model">meli.campaign.record.line</field>
+			<field name="view_type">form</field>
+			<field name="view_mode">tree,form</field>
+			<field name="view_id" ref="meli_campaign_record_line_tree_view" />
+			<field name="search_view_id" ref="meli_campaign_record_line_search_view" />
+			<field name="context">{'search_default_filter_by_in_progress': 1}</field>
+		</record>
+
+		<menuitem id="meli_campaign_record_line_menu" name="Detalle de Ofertas"
+			sequence="18" parent="menu_meli" action="meli_campaign_record_line_action"
+			groups="meli_oerp.group_meli_user" />
+
+	</data>
+</odoo>

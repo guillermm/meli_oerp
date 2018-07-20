@@ -42,6 +42,7 @@
         'views/orders_view.xml',
         'views/meli_campaign_view.xml',
         'views/meli_campaign_record_view.xml',
+        'views/meli_campaign_record_line_view.xml',
         'views/sale_order_view.xml',
         'views/res_partner_view.xml',
     ],

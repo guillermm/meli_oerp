@@ -375,6 +375,14 @@ class MeliCampaignRecordLine(models.Model):
                 continue
         return messages
     
+    @api.multi
+    def name_get(self):
+        res = []
+        for element in self:
+            name = u"%s %s" % (element.meli_campaign_id.display_name or '', element.product_template_id.display_name)
+            res.append((element.id, name))
+        return res
+    
 class MeliCampaignRecordRevisionReason(models.Model):
 
     _name = 'meli.campaign.record.review.reason'
