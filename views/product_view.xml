@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
 	<data>
+	
+		<record model="ir.actions.act_window" id="product_open_meli_campaign_record_line">
+            <field name="name">Detalle de Ofertas</field>
+            <field name="res_model">meli.campaign.record.line</field>
+            <field name="context">{'search_default_product_template_id': active_id}</field>
+        </record>
 
 		<record model="ir.ui.view" id="product_nh_ml_form_view">
 			<field name="name">product.nh.ml.form.inherit</field>
@@ -52,6 +58,8 @@
 							<button name='product_meli_login' type="object" class="oe_stat_button"
 								icon="fa-sign-in" string="Se requiere Iniciar Sesión en MLA"
 								attrs="{'invisible':[('meli_state','=',False)]}" />
+							<button name='%(product_open_meli_campaign_record_line)d' type="action" class="oe_stat_button"
+								icon="fa-usd" string="Ver Ofertas" />
 						</div>
 						<group string="Informacion de ML">
 							<group>
