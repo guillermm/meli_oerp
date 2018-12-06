@@ -57,6 +57,7 @@ class ProductTemplate(models.Model):
     meli_price = fields.Char(string='Precio de venta', size=128)
     meli_price_fixed = fields.Boolean(string='Price is fixed')
     meli_currency = fields.Selection([
+        ("COP","Peso Colombiano (COP)"), 
         ("CLP","Peso Chileno (CLP)"),
         ("USD","Dolares Americanos (USD)")
         ],string='Moneda')
@@ -279,6 +280,27 @@ class ProductTemplate(models.Model):
         meli = meli_util_model.get_new_instance()
         response = meli.put("/items/"+self.meli_id, { 'status': 'active' }, {'access_token':meli.access_token})
         return {}
+
+    def product_meli_republish(self):
+        raise Warning('test')
+        meli_util_model = self.env['meli.util']
+        REDIRECT_URI = company.mercadolibre_redirect_uri
+        CLIENT_ID = company.mercadolibre_client_id
+        CLIENT_SECRET = company.mercadolibre_secret_key
+        ACCESS_TOKEN = company.mercadolibre_access_token
+        if not ACCESS_TOKEN:
+            meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET)
+            url_login_meli = meli.auth_url(redirect_URI=REDIRECT_URI)
+            return {
+                "type": "ir.actions.act_url",
+                "url": url_login_meli,
+                "target": "new",
+            }
+        if not self.meli_id:
+            return {}
+        meli = meli_util_model.get_new_instance()
+        response = meli.put("/items/"+self.meli_id, { 'status': 'active' }, {'access_token':meli.access_token})
+        return {}        
 
     def product_meli_delete(self):
         if not self.meli_id:
@@ -570,7 +592,7 @@ class ProductTemplate(models.Model):
             "listing_type_id": product.meli_listing_type or '0',
             "buying_mode": product.meli_buying_mode or '',
             "price": int(product.price),
-            "currency_id": product.meli_currency  or 'CLP',
+            "currency_id": product.meli_currency  or 'COP',
             "condition": product.meli_condition  or '',
             "available_quantity": max([qty_available, 0]),
             "warranty": product.meli_warranty or '',
@@ -786,7 +808,8 @@ class ProductTemplate(models.Model):
         multi_images_ids, message_list_images = product.product_meli_upload_multi_images()
         if message_list_images:
             message_list.extend(message_list_images)
-        meli_title = product.get_title_for_meli()
+        #meli_title = product.get_title_for_meli()
+        meli_title = product.meli_title
         if product.meli_title:
             if product.meli_title != meli_title:
                 product.write({'meli_title': meli_title})
@@ -797,7 +820,15 @@ class ProductTemplate(models.Model):
             "warranty": product.meli_warranty or '',
             "video_id": product.meli_video  or '',
         }
-        
+
+        bodyprice = {
+            "price": int(product.price),
+        }
+
+        bodydescription = {
+            "plain_text": product.meli_description or '',
+        }
+       
         #ID de COLOR = 83000
         #ID de TALLA = 73003
         variations = []
@@ -867,6 +898,10 @@ class ProductTemplate(models.Model):
         rjson = {}
         if product.meli_id:
             response = meli.put("/items/"+product.meli_id, body, {'access_token':meli.access_token})
+            #Actualiza Precio
+            resprice = meli.put("/items/"+self.meli_id, bodyprice, {'access_token':meli.access_token})
+            #Actualiza Descripción
+            resdescription = meli.put("/items/"+product.meli_id+"/description", bodydescription, {'access_token':meli.access_token})
             rjson = response.json()
         #check error
         if "error" in rjson:
@@ -968,7 +1003,7 @@ class ProductTemplate(models.Model):
             'title': self.get_title_for_category_predictor(),
             'price': self.get_price_for_category_predictor(),
         }]
-        response = meli.post("/sites/MLC/category_predictor/predict", vals)
+        response = meli.post("/sites/MCO/category_predictor/predict", vals)
         rjson = response.json()
         meli_categ = False
         if rjson and isinstance(rjson, list):
@@ -981,7 +1016,7 @@ class ProductTemplate(models.Model):
         pricelist = self.env.user.company_id.meli_pricelist_id
         if not pricelist:
             pricelist = self.env['product.pricelist'].search([
-                ('currency_id','=','CLP'),
+                ('currency_id','=','COP'),
                 ('website_id','!=',False),
             ], limit=1)
         if not pricelist:
@@ -1008,7 +1043,7 @@ class ProductTemplate(models.Model):
             if not template.meli_price:
                 vals['meli_price'] = int(template.price)
             if not template.meli_currency:
-                vals['meli_currency'] = 'CLP'
+                vals['meli_currency'] = 'COP'
             if not template.meli_condition:
                 vals['meli_condition'] = meli_condition
             if not template.meli_description:
