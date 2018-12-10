@@ -1,0 +1,9 @@
+configparser==3.5.0     
+image==1.5.27    
+pybase64==0.4.0     
+pycurl==7.43.0.2  
+pyOpenSSL==18.0.0    
+regex==2018.11.22
+requests==2.20.1    
+requests-toolbelt==0.8.0
+ndg-httpsclient==0.5.1
